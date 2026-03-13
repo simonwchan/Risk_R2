@@ -1,9 +1,15 @@
 from flask import Flask, render_template, request, jsonify, session
-import json
+import json, os, sys
+
+# Ensure imports work regardless of where the script is run from
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from game_logic import Game
 from game_data import CONTINENTS, ALL_TERRITORIES, ADJACENCIES
 
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'),
+            static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static'))
 app.secret_key = "risk_global_secret_2024"
 
 games = {}
@@ -80,10 +86,6 @@ def fortify():
     g = games[game_id]
     result = g.fortify(0, data["from"], data["to"], int(data["armies"]))
     if "error" not in result:
-        result["state"] = g.get_state()
-        # Advance past AI turns
-        while not g.winner and not g.players[g.current_player_idx].is_human:
-            pass  # AI turns handled automatically in _end_turn
         result["state"] = g.get_state()
     return jsonify(result)
 
