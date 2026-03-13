@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Global - Battle Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English&family=Oswald:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#C9A84C;--gold-light:#F0D080;--blood:#8B1A1A;
+  --dark:#0A0A0F;--panel:#0F0F1A;--border:rgba(201,168,76,0.25);
+  --text:#D8CCB0;--text-dim:#8A8070;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--dark);color:var(--text);font-family:'Oswald',sans-serif;display:flex;flex-direction:column}
+
+/* TOP BAR */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0.5rem 1rem;background:rgba(0,0,0,0.7);
+  border-bottom:1px solid var(--border);flex-shrink:0;
+  backdrop-filter:blur(4px);
+}
+#topbar h1{font-family:'Cinzel',serif;color:var(--gold);font-size:1.1rem;letter-spacing:0.15em}
+#phase-indicator{
+  font-family:'Cinzel',serif;font-size:0.8rem;letter-spacing:0.2em;
+  padding:0.3rem 1rem;border:1px solid var(--gold);color:var(--gold);
+  text-transform:uppercase;background:rgba(201,168,76,0.08);
+}
+#turn-info{font-size:0.8rem;color:var(--text-dim)}
+
+/* MAIN LAYOUT */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* MAP AREA */
+#map-area{flex:1;position:relative;overflow:hidden;background:#0d1520}
+#world-map{width:100%;height:100%;cursor:default}
+
+/* SIDEBAR */
+#sidebar{
+  width:300px;flex-shrink:0;display:flex;flex-direction:column;
+  background:var(--panel);border-left:1px solid var(--border);overflow-y:auto;
+}
+
+.panel-section{
+  padding:0.8rem 1rem;border-bottom:1px solid var(--border);
+}
+.panel-section h3{
+  font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.2em;
+  color:var(--gold);text-transform:uppercase;margin-bottom:0.6rem;
+}
+
+/* PLAYER LIST */
+.player-item{
+  display:flex;align-items:center;gap:0.5rem;
+  padding:0.35rem 0;font-size:0.82rem;
+}
+.player-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.player-item.current-player{background:rgba(201,168,76,0.08);margin:0 -0.5rem;padding:0.35rem 0.5rem;border-radius:2px}
+.player-item.eliminated{opacity:0.35;text-decoration:line-through}
+.player-stats{margin-left:auto;color:var(--text-dim);font-size:0.75rem}
+
+/* ACTION PANEL */
+#action-panel{flex:1;padding:0.8rem 1rem;display:flex;flex-direction:column;gap:0.6rem}
+.action-title{font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-bottom:0.3rem}
+
+.btn{
+  display:block;width:100%;padding:0.55rem 1rem;
+  background:transparent;border:1px solid rgba(201,168,76,0.3);
+  color:var(--text);font-family:'Oswald',sans-serif;font-size:0.9rem;
+  letter-spacing:0.05em;cursor:pointer;transition:all 0.2s;border-radius:2px;
+  text-align:center;
+}
+.btn:hover:not(:disabled){background:rgba(201,168,76,0.1);border-color:var(--gold);color:var(--gold)}
+.btn:disabled{opacity:0.3;cursor:not-allowed}
+.btn.primary{background:rgba(139,26,26,0.4);border-color:rgba(200,80,80,0.5);color:#ff9999}
+.btn.primary:hover:not(:disabled){background:rgba(139,26,26,0.6);border-color:#cc4444;color:#ffbbbb}
+.btn.success{background:rgba(26,100,26,0.4);border-color:rgba(80,180,80,0.5);color:#99ff99}
+.btn.success:hover:not(:disabled){background:rgba(26,100,26,0.6)}
+
+.territory-info{
+  background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  padding:0.7rem;border-radius:2px;font-size:0.82rem;line-height:1.6;
+}
+.territory-info .terr-name{font-family:'Cinzel',serif;color:var(--gold);font-size:0.9rem}
+.territory-info .terr-detail{color:var(--text-dim)}
+
+/* SLIDERS */
+.slider-group{display:flex;align-items:center;gap:0.5rem;font-size:0.82rem}
+input[type=range]{flex:1;accent-color:var(--gold)}
+.slider-val{min-width:2rem;text-align:right;color:var(--gold);font-family:'Cinzel',serif}
+
+/* LOG */
+#log-panel{
+  height:120px;overflow-y:auto;padding:0.5rem 1rem;
+  background:rgba(0,0,0,0.3);border-top:1px solid var(--border);
+  font-size:0.75rem;line-height:1.6;color:var(--text-dim);
+}
+#log-panel p{border-bottom:1px solid rgba(255,255,255,0.05);padding:0.15rem 0}
+#log-panel p:last-child{color:var(--text)}
+
+/* DICE RESULT */
+#dice-result{
+  display:none;background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  padding:0.7rem;border-radius:2px;text-align:center;font-size:0.85rem;
+}
+.dice-row{display:flex;gap:0.4rem;justify-content:center;margin:0.3rem 0;flex-wrap:wrap}
+.die{
+  width:32px;height:32px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-weight:700;font-size:1rem;
+}
+.die.atk{background:#5a1010;border:1px solid #aa2020;color:#ff8888}
+.die.def{background:#10205a;border:1px solid #2040aa;color:#8899ff}
+
+/* CONTINENT LEGEND */
+.cont-item{display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.77rem}
+.cont-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.cont-bonus{margin-left:auto;color:var(--gold);font-family:'Cinzel',serif;font-size:0.7rem}
+
+/* CARDS */
+.card-item{
+  display:inline-flex;align-items:center;gap:0.3rem;
+  padding:0.2rem 0.6rem;background:rgba(201,168,76,0.1);
+  border:1px solid rgba(201,168,76,0.3);border-radius:2px;
+  font-size:0.78rem;cursor:pointer;transition:all 0.2s;margin:0.15rem;
+}
+.card-item.selected{background:rgba(201,168,76,0.3);border-color:var(--gold);color:var(--gold)}
+.cards-area{display:flex;flex-wrap:wrap}
+
+/* OVERLAY */
+#overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);
+  z-index:100;align-items:center;justify-content:center;
+}
+#overlay.show{display:flex}
+.modal{
+  background:var(--panel);border:1px solid var(--gold);
+  padding:2rem;max-width:440px;width:90%;border-radius:4px;
+  text-align:center;font-family:'IM Fell English',serif;
+}
+.modal h2{font-family:'Cinzel',serif;color:var(--gold);font-size:1.8rem;margin-bottom:1rem}
+.modal p{color:var(--text);font-size:1rem;line-height:1.7;margin-bottom:1.5rem}
+
+/* Territory hover tooltip */
+#tooltip{
+  display:none;position:fixed;background:rgba(5,5,15,0.95);
+  border:1px solid var(--gold);padding:0.5rem 0.8rem;
+  font-size:0.78rem;pointer-events:none;z-index:50;border-radius:2px;
+  min-width:140px;
+}
+#tooltip .tt-name{font-family:'Cinzel',serif;color:var(--gold);font-size:0.82rem}
+#tooltip .tt-info{color:var(--text-dim);margin-top:0.2rem}
+
+/* MAP: territory circles */
+.terr-circle{
+  cursor:pointer;transition:r 0.15s,opacity 0.15s;
+}
+.terr-circle:hover{opacity:0.85}
+.terr-label{
+  font-family:'Oswald',sans-serif;font-size:8px;
+  fill:white;text-anchor:middle;dominant-baseline:central;
+  pointer-events:none;font-weight:600;text-shadow:0 1px 2px black;
+}
+.terr-army{
+  font-family:'Oswald',sans-serif;font-size:9px;font-weight:700;
+  fill:white;text-anchor:middle;dominant-baseline:central;
+  pointer-events:none;
+}
+.connection-line{stroke:rgba(255,255,255,0.08);stroke-width:1;pointer-events:none}
+.connection-line.highlight{stroke:rgba(255,255,100,0.4);stroke-width:2}
+.selected-ring{fill:none;stroke:#FFD700;stroke-width:3;pointer-events:none;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{stroke-opacity:1;r:18}50%{stroke-opacity:0.5;r:20}}
+.attack-highlight{fill:none;stroke:#FF4444;stroke-width:2;pointer-events:none;animation:pulse-red 0.8s infinite}
+@keyframes pulse-red{0%,100%{stroke-opacity:1}50%{stroke-opacity:0.3}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,0.2)}
+::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
+
+#msg-banner{
+  display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);
+  background:rgba(10,10,20,0.95);border:1px solid var(--gold);
+  padding:0.6rem 1.5rem;font-family:'Cinzel',serif;font-size:0.85rem;
+  color:var(--gold);z-index:60;border-radius:2px;white-space:nowrap;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <h1>⚔ Risk Global</h1>
+  <div id="phase-indicator">Loading...</div>
+  <div id="turn-info">Turn 1</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- MAP -->
+  <div id="map-area">
+    <svg id="world-map" viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="mapbg" cx="50%" cy="50%" r="70%">
+          <stop offset="0%" style="stop-color:#0d1a2a"/>
+          <stop offset="100%" style="stop-color:#060c14"/>
+        </radialGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="1100" height="580" fill="url(#mapbg)"/>
+      <!-- Ocean texture lines -->
+      <g stroke="rgba(255,255,255,0.02)" stroke-width="1">
+        <line x1="0" y1="145" x2="1100" y2="145"/>
+        <line x1="0" y1="290" x2="1100" y2="290"/>
+        <line x1="0" y1="435" x2="1100" y2="435"/>
+        <line x1="275" y1="0" x2="275" y2="580"/>
+        <line x1="550" y1="0" x2="550" y2="580"/>
+        <line x1="825" y1="0" x2="825" y2="580"/>
+      </g>
+
+      <!-- Continent label areas (decorative) -->
+      <g id="continent-labels" opacity="0.12">
+        <text x="130" y="155" font-family="Cinzel" font-size="14" fill="#E8A838" text-anchor="middle" letter-spacing="3">NORTH AMERICA</text>
+        <text x="185" y="400" font-family="Cinzel" font-size="11" fill="#44AA44" text-anchor="middle" letter-spacing="2">SOUTH AMERICA</text>
+        <text x="490" y="130" font-family="Cinzel" font-size="13" fill="#4488CC" text-anchor="middle" letter-spacing="3">EUROPE</text>
+        <text x="510" y="370" font-family="Cinzel" font-size="13" fill="#CC8844" text-anchor="middle" letter-spacing="3">AFRICA</text>
+        <text x="680" y="230" font-family="Cinzel" font-size="10" fill="#CC6644" text-anchor="middle" letter-spacing="2">MIDDLE EAST</text>
+        <text x="790" y="370" font-family="Cinzel" font-size="11" fill="#8844CC" text-anchor="middle" letter-spacing="2">S.E. ASIA</text>
+        <text x="850" y="200" font-family="Cinzel" font-size="12" fill="#CC4488" text-anchor="middle" letter-spacing="2">EAST ASIA</text>
+        <text x="830" y="100" font-family="Cinzel" font-size="11" fill="#887755" text-anchor="middle" letter-spacing="2">RUSSIA</text>
+        <text x="960" y="460" font-family="Cinzel" font-size="11" fill="#44AACC" text-anchor="middle" letter-spacing="2">OCEANIA</text>
+      </g>
+
+      <g id="connections-layer"></g>
+      <g id="territories-layer"></g>
+    </svg>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <!-- Players -->
+    <div class="panel-section">
+      <h3>Players</h3>
+      <div id="player-list"></div>
+    </div>
+
+    <!-- Selected Territory -->
+    <div class="panel-section" id="territory-section">
+      <h3>Selected Territory</h3>
+      <div id="territory-info" class="territory-info">
+        <div style="color:var(--text-dim);font-size:0.8rem;font-style:italic">Click a territory to select it</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div id="action-panel">
+      <div id="action-content">
+        <div style="color:var(--text-dim);font-size:0.82rem;font-style:italic;text-align:center;margin-top:1rem">
+          Loading game...
+        </div>
+      </div>
+    </div>
+
+    <!-- Dice Result -->
+    <div class="panel-section" id="dice-section" style="display:none">
+      <h3>Battle Result</h3>
+      <div id="dice-result"></div>
+    </div>
+
+    <!-- Cards -->
+    <div class="panel-section" id="cards-section">
+      <h3>Cards (<span id="card-count">0</span>)</h3>
+      <div id="cards-area" class="cards-area"></div>
+      <button class="btn" id="trade-cards-btn" style="display:none;margin-top:0.5rem" onclick="tradeSelectedCards()">Trade Selected Cards</button>
+    </div>
+
+    <!-- Continent Legend -->
+    <div class="panel-section">
+      <h3>Continents</h3>
+      <div id="continent-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOG -->
+<div id="log-panel"></div>
+
+<!-- TOOLTIP -->
+<div id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-info" id="tt-info"></div>
+</div>
+
+<!-- MESSAGE BANNER -->
+<div id="msg-banner"></div>
+
+<!-- WIN OVERLAY -->
+<div id="overlay">
+  <div class="modal">
+    <h2 id="overlay-title">Victory!</h2>
+    <p id="overlay-msg">You have conquered the world!</p>
+    <button class="btn primary" onclick="window.location='/'">New Campaign</button>
+  </div>
+</div>
+
+<script>
+// ===== TERRITORY POSITIONS (x, y on 1100x580 SVG) =====
+const POSITIONS = {
+  // North America
+  "Alaska":           [55, 85],
+  "Western Canada":   [110, 120],
+  "Eastern Canada":   [195, 110],
+  "Quebec":           [245, 140],
+  "Pacific Northwest":[90, 165],
+  "Great Plains":     [145, 185],
+  "Eastern USA":      [200, 210],
+  "Southern USA":     [165, 255],
+  "Mexico":           [130, 300],
+  "Central America":  [155, 340],
+
+  // South America
+  "Venezuela & Colombia": [210, 375],
+  "Brazil North":    [255, 400],
+  "Brazil South":    [255, 445],
+  "Peru & Bolivia":  [210, 430],
+  "Argentina & Chile":[225, 490],
+
+  // Europe
+  "Iceland":         [390, 80],
+  "British Isles":   [420, 120],
+  "Scandinavia":     [490, 85],
+  "Western Europe":  [430, 170],
+  "Central Europe":  [490, 155],
+  "Southern Europe": [490, 200],
+  "Eastern Europe":  [555, 155],
+  "Ukraine & Caucasus": [605, 175],
+
+  // Africa
+  "North Africa":    [460, 280],
+  "West Africa":     [440, 340],
+  "Central Africa":  [500, 380],
+  "East Africa":     [560, 360],
+  "South Africa":    [510, 450],
+  "Madagascar":      [580, 430],
+
+  // Middle East & Central Asia
+  "Turkey & Levant": [600, 215],
+  "Arabian Peninsula":[625, 280],
+  "Iran & Iraq":     [655, 235],
+  "Central Asia":    [695, 185],
+  "Afghanistan & Pakistan": [700, 240],
+
+  // South & SE Asia
+  "India":           [730, 295],
+  "Sri Lanka & South India": [750, 345],
+  "Southeast Asia Mainland": [790, 310],
+  "Indonesia & Malaysia":    [840, 370],
+  "Philippines":     [880, 320],
+  "Indochina":       [830, 280],
+
+  // East Asia
+  "China North":     [800, 210],
+  "China South":     [820, 260],
+  "Manchuria & Korea":[865, 195],
+  "Japan":           [920, 195],
+  "Mongolia & Siberia East":[820, 160],
+  "Taiwan":          [880, 265],
+
+  // Russia
+  "Western Russia":  [600, 120],
+  "Siberia West":    [680, 120],
+  "Siberia Central": [760, 110],
+  "Siberia East":    [880, 120],
+  "Kamchatka":       [960, 100],
+
+  // Oceania
+  "Western Australia": [900, 460],
+  "Eastern Australia": [960, 450],
+  "New Zealand & Pacific": [1030, 480],
+};
+
+// ===== STATE =====
+let state = null;
+let selectedTerritory = null;
+let attackFrom = null;
+let reinforcementsLeft = 0;
+let selectedCards = [];
+let gameMode = null; // 'reinforce','attack','fortify'
+
+// ===== INIT =====
+async function init() {
+  await loadState();
+  buildContinentList();
+  buildConnections();
+  render();
+}
+
+async function loadState() {
+  const res = await fetch('/api/state');
+  if (res.status === 404) {
+    window.location.href = '/';
+    return;
+  }
+  const data = await res.json();
+  state = data;
+  reinforcementsLeft = state.reinforcements_available || 0;
+  gameMode = state.phase;
+}
+
+// ===== BUILD MAP =====
+function buildConnections() {
+  const layer = document.getElementById('connections-layer');
+  layer.innerHTML = '';
+  const drawn = new Set();
+  for (const [t, neighbors] of Object.entries(POSITIONS)) {
+    if (!state?.adjacencies) continue;
+    const adjs = state.adjacencies[t] || [];
+    for (const n of adjs) {
+      const key = [t,n].sort().join('||');
+      if (drawn.has(key)) continue;
+      drawn.add(key);
+      if (!POSITIONS[n]) continue;
+      const [x1,y1] = POSITIONS[t];
+      const [x2,y2] = POSITIONS[n];
+      // Skip wrap-around connections on map (Alaska-Kamchatka drawn specially)
+      const dist = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+      if (dist > 400) continue; // wrap-around, skip
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+      line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+      line.setAttribute('class','connection-line');
+      line.id = `conn-${key.replace(/[&\s]/g,'_')}`;
+      layer.appendChild(line);
+    }
+  }
+  // Draw Alaska-Kamchatka as curved dashed line at top
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d','M 55 85 C 55 30, 960 30, 960 100');
+  path.setAttribute('stroke','rgba(255,255,255,0.06)');
+  path.setAttribute('stroke-width','1');
+  path.setAttribute('stroke-dasharray','4,4');
+  path.setAttribute('fill','none');
+  layer.appendChild(path);
+}
+
+function render() {
+  if (!state) return;
+
+  // Phase indicator
+  const phaseNames = {reinforce:'REINFORCE',attack:'ATTACK',fortify:'FORTIFY'};
+  document.getElementById('phase-indicator').textContent = phaseNames[state.phase] || state.phase.toUpperCase();
+  document.getElementById('turn-info').textContent = `Turn ${state.turn}`;
+
+  // Players
+  renderPlayers();
+
+  // Map territories
+  renderMap();
+
+  // Actions
+  renderActions();
+
+  // Cards
+  renderCards();
+
+  // Winner check
+  if (state.winner !== null && state.winner !== undefined) {
+    const winner = state.players.find(p => p.id === state.winner);
+    document.getElementById('overlay-title').textContent = winner?.is_human ? '🏆 Victory!' : '💀 Defeated';
+    document.getElementById('overlay-msg').textContent = winner?.is_human
+      ? 'You have conquered the world and stand as supreme ruler!'
+      : `${winner?.name} has conquered the world. Better luck next time.`;
+    document.getElementById('overlay').classList.add('show');
+  }
+
+  // Log
+  renderLog();
+}
+
+function renderPlayers() {
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  for (const p of state.players) {
+    const div = document.createElement('div');
+    div.className = 'player-item' + (p.id === state.current_player ? ' current-player' : '') + (p.eliminated ? ' eliminated' : '');
+    div.innerHTML = `
+      <div class="player-dot" style="background:${p.color}"></div>
+      <span>${p.is_human ? '👤 ' : '🤖 '}${p.name}</span>
+      <span class="player-stats">${p.territory_count}🗺 ${p.army_count}⚔</span>
+    `;
+    list.appendChild(div);
+  }
+}
+
+function renderMap() {
+  const layer = document.getElementById('territories-layer');
+  layer.innerHTML = '';
+
+  const currentPlayer = state.players.find(p => p.id === state.current_player);
+  const humanPlayer = state.players.find(p => p.is_human);
+  const isHumanTurn = currentPlayer?.is_human;
+
+  for (const [name, data] of Object.entries(state.territories)) {
+    const pos = POSITIONS[name];
+    if (!pos) continue;
+    const [x, y] = pos;
+    const owner = state.players.find(p => p.id === data.owner);
+    const color = owner ? owner.color : '#444';
+    const isSelected = name === selectedTerritory;
+    const isAttackFrom = name === attackFrom;
+    const isAttackable = attackFrom && state.adjacencies[attackFrom]?.includes(name)
+      && data.owner !== humanPlayer?.id
+      && isHumanTurn && state.phase === 'attack';
+    const isFortifyTarget = selectedTerritory && state.phase === 'fortify'
+      && data.owner === humanPlayer?.id && name !== selectedTerritory && isHumanTurn;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+
+    // Glow for attackable
+    if (isAttackable) {
+      const glow = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      glow.setAttribute('cx',x); glow.setAttribute('cy',y); glow.setAttribute('r',18);
+      glow.setAttribute('fill','rgba(255,60,60,0.15)');
+      glow.setAttribute('class','attack-highlight');
+      g.appendChild(glow);
+    }
+
+    // Main circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',x); circle.setAttribute('cy',y);
+    circle.setAttribute('r', isSelected || isAttackFrom ? 17 : 14);
+    circle.setAttribute('fill', color);
+    circle.setAttribute('stroke', isSelected || isAttackFrom ? '#FFD700' : (isAttackable ? '#FF4444' : 'rgba(0,0,0,0.5)'));
+    circle.setAttribute('stroke-width', isSelected || isAttackFrom ? 3 : 1.5);
+    circle.setAttribute('class','terr-circle');
+    circle.setAttribute('filter','url(#glow)');
+    circle.style.cursor = 'pointer';
+    circle.addEventListener('click', () => handleTerritoryClick(name));
+    circle.addEventListener('mouseenter', (e) => showTooltip(e, name));
+    circle.addEventListener('mousemove', (e) => moveTooltip(e));
+    circle.addEventListener('mouseleave', hideTooltip);
+    g.appendChild(circle);
+
+    // Army count
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',x); txt.setAttribute('y',y);
+    txt.setAttribute('class','terr-army');
+    txt.textContent = data.armies;
+    g.appendChild(txt);
+
+    layer.appendChild(g);
+  }
+}
+
+function handleTerritoryClick(name) {
+  const data = state.territories[name];
+  const humanPlayer = state.players.find(p => p.is_human);
+  const currentPlayer = state.players.find(p => p.id === state.current_player);
+  const isHumanTurn = currentPlayer?.is_human;
+
+  selectedTerritory = name;
+  updateTerritoryInfo(name);
+
+  if (!isHumanTurn) {
+    renderMap();
+    return;
+  }
+
+  if (state.phase === 'reinforce') {
+    if (data.owner === humanPlayer?.id) {
+      renderActions();
+    }
+  } else if (state.phase === 'attack') {
+    if (data.owner === humanPlayer?.id && data.armies >= 2) {
+      attackFrom = name;
+      showMsg(`Selected ${name} as attacker. Click an adjacent enemy territory to attack.`);
+    } else if (attackFrom && state.adjacencies[attackFrom]?.includes(name) && data.owner !== humanPlayer?.id) {
+      // Attack!
+      doAttack(attackFrom, name);
+      return;
+    } else if (data.owner !== humanPlayer?.id) {
+      showMsg('First select one of your territories with 2+ armies to attack from.');
+    }
+  } else if (state.phase === 'fortify') {
+    if (data.owner === humanPlayer?.id) {
+      if (!selectedTerritory || selectedTerritory === name) {
+        showMsg(`Selected ${name} as source. Click another of your territories to fortify.`);
+      } else if (name !== attackFrom) {
+        // fortify to this territory
+        const from = attackFrom || selectedTerritory;
+        if (from && from !== name) {
+          renderFortifyAction(from, name);
+          return;
+        }
+      }
+      attackFrom = name;
+      renderActions();
+    }
+  }
+  renderMap();
+}
+
+function updateTerritoryInfo(name) {
+  const data = state.territories[name];
+  const owner = state.players.find(p => p.id === data.owner);
+  const adjs = (state.adjacencies[name] || []).map(n => {
+    const t = state.territories[n];
+    const o = state.players.find(p => p.id === t?.owner);
+    return `<span style="color:${o?.color || '#888'}">${n}</span>`;
+  }).join(', ');
+
+  document.getElementById('territory-info').innerHTML = `
+    <div class="terr-name">${name}</div>
+    <div class="terr-detail">Continent: ${data.continent}</div>
+    <div class="terr-detail">Owner: <span style="color:${owner?.color}">${owner?.name || 'None'}</span></div>
+    <div class="terr-detail">Armies: <strong style="color:var(--gold)">${data.armies}</strong></div>
+    <div class="terr-detail" style="font-size:0.73rem;margin-top:0.3rem">Borders: ${adjs}</div>
+  `;
+}
+
+function renderActions() {
+  const ac = document.getElementById('action-content');
+  const humanPlayer = state.players.find(p => p.is_human);
+  const currentPlayer = state.players.find(p => p.id === state.current_player);
+  const isHumanTurn = currentPlayer?.is_human;
+
+  if (!isHumanTurn) {
+    ac.innerHTML = `<div style="color:var(--text-dim);font-size:0.82rem;text-align:center;margin-top:1rem">
+      <div style="font-size:1.2rem;margin-bottom:0.5rem">🤖</div>
+      ${currentPlayer?.name} is taking their turn...
+    </div>`;
+    return;
+  }
+
+  if (state.phase === 'reinforce') {
+    const terr = selectedTerritory && state.territories[selectedTerritory]?.owner === humanPlayer?.id ? selectedTerritory : null;
+    ac.innerHTML = `
+      <div class="action-title">Reinforce Phase</div>
+      <div style="color:var(--gold);font-family:'Cinzel',serif;font-size:0.85rem;margin-bottom:0.5rem">
+        Armies to place: <strong>${reinforcementsLeft}</strong>
+      </div>
+      ${terr ? `
+        <div style="font-size:0.82rem;margin-bottom:0.5rem;color:var(--text-dim)">Reinforcing: <span style="color:var(--gold)">${terr}</span></div>
+        <div class="slider-group">
+          <input type="range" id="reinf-slider" min="1" max="${reinforcementsLeft}" value="${Math.min(reinforcementsLeft,3)}" oninput="document.getElementById('reinf-val').textContent=this.value">
+          <span class="slider-val" id="reinf-val">${Math.min(reinforcementsLeft,3)}</span>
+        </div>
+        <button class="btn success" style="margin-top:0.5rem" onclick="doReinforce('${terr}')">Place Armies</button>
+      ` : `
+        <div style="color:var(--text-dim);font-size:0.8rem;font-style:italic">
+          Click one of your territories to reinforce it.
+        </div>
+      `}
+    `;
+  } else if (state.phase === 'attack') {
+    ac.innerHTML = `
+      <div class="action-title">Attack Phase</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.6rem">
+        ${attackFrom ? `Attacking from: <span style="color:var(--gold)">${attackFrom}</span> (${state.territories[attackFrom]?.armies} armies)` : 'Select your territory, then click an enemy territory to attack.'}
+      </div>
+      ${attackFrom ? `
+        <div class="slider-group" style="margin-bottom:0.5rem">
+          <label style="font-size:0.78rem;color:var(--text-dim);width:60px">Dice:</label>
+          <input type="range" id="dice-slider" min="1" max="${Math.min(3, (state.territories[attackFrom]?.armies||1)-1)}" value="${Math.min(3,(state.territories[attackFrom]?.armies||1)-1)}" oninput="document.getElementById('dice-val').textContent=this.value">
+          <span class="slider-val" id="dice-val">${Math.min(3,(state.territories[attackFrom]?.armies||1)-1)}</span>
+        </div>
+        <button class="btn" onclick="attackFrom=null;renderMap();renderActions()">Cancel Selection</button>
+      ` : ''}
+      <button class="btn primary" style="margin-top:0.5rem" onclick="doEndAttack()">End Attacks →</button>
+    `;
+  } else if (state.phase === 'fortify') {
+    ac.innerHTML = `
+      <div class="action-title">Fortify Phase</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.6rem">
+        Move armies from one territory to another connected territory you own.
+      </div>
+      <div style="font-size:0.78rem;color:var(--text-dim)">
+        ${attackFrom ? `From: <span style="color:var(--gold)">${attackFrom}</span> — Click another territory to fortify.` : 'Click one of your territories to start.'}
+      </div>
+      <button class="btn success" style="margin-top:0.8rem" onclick="doSkipFortify()">Skip Fortify →</button>
+    `;
+  }
+}
+
+function renderFortifyAction(from, to) {
+  const ac = document.getElementById('action-content');
+  const maxArmies = (state.territories[from]?.armies || 2) - 1;
+  ac.innerHTML = `
+    <div class="action-title">Fortify</div>
+    <div style="font-size:0.82rem;margin-bottom:0.5rem;color:var(--text-dim)">
+      <span style="color:var(--gold)">${from}</span> → <span style="color:#99ff99">${to}</span>
+    </div>
+    <div class="slider-group">
+      <input type="range" id="fort-slider" min="1" max="${maxArmies}" value="${Math.min(maxArmies, Math.floor(maxArmies/2)+1)}"
+        oninput="document.getElementById('fort-val').textContent=this.value">
+      <span class="slider-val" id="fort-val">${Math.min(maxArmies, Math.floor(maxArmies/2)+1)}</span>
+    </div>
+    <button class="btn success" style="margin-top:0.5rem" onclick="doFortify('${from}','${to}')">Fortify</button>
+    <button class="btn" style="margin-top:0.3rem" onclick="attackFrom=null;selectedTerritory=null;renderActions();renderMap()">Cancel</button>
+  `;
+}
+
+function buildContinentList() {
+  // Will be called after state loads
+}
+
+function renderCards() {
+  const humanPlayer = state.players.find(p => p.is_human);
+  if (!humanPlayer) return;
+  const cards = humanPlayer.cards;
+  document.getElementById('card-count').textContent = cards.length;
+
+  const area = document.getElementById('cards-area');
+  area.innerHTML = '';
+  selectedCards = [];
+
+  const icons = {infantry:'⚔',cavalry:'🐎',artillery:'💣',wild:'⭐'};
+  cards.forEach((card, i) => {
+    const span = document.createElement('span');
+    span.className = 'card-item';
+    span.textContent = `${icons[card]||'?'} ${card}`;
+    span.dataset.idx = i;
+    span.addEventListener('click', () => {
+      span.classList.toggle('selected');
+      if (span.classList.contains('selected')) {
+        selectedCards.push(i);
+      } else {
+        selectedCards = selectedCards.filter(x => x !== i);
+      }
+      document.getElementById('trade-cards-btn').style.display = selectedCards.length === 3 ? 'block' : 'none';
+    });
+    area.appendChild(span);
+  });
+
+  document.getElementById('trade-cards-btn').style.display = 'none';
+}
+
+async function tradeSelectedCards() {
+  if (selectedCards.length !== 3) return;
+  const res = await fetch('/api/trade_cards', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({card_indices: selectedCards})
+  });
+  const data = await res.json();
+  if (data.error) { showMsg('❌ ' + data.error); return; }
+  showMsg(`✅ Cards traded! +${data.bonus_armies} armies!`);
+  reinforcementsLeft += data.bonus_armies;
+  state = data.state;
+  render();
+}
+
+function renderLog() {
+  const log = document.getElementById('log-panel');
+  const entries = state.attack_log || [];
+  log.innerHTML = entries.map(e => `<p>${e}</p>`).join('');
+  log.scrollTop = log.scrollHeight;
+}
+
+// ===== ACTIONS =====
+async function doReinforce(territory) {
+  const armies = parseInt(document.getElementById('reinf-slider')?.value || 1);
+  if (armies > reinforcementsLeft) { showMsg('Not enough armies!'); return; }
+
+  const res = await fetch('/api/reinforce', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({territory, armies})
+  });
+  const data = await res.json();
+  if (data.error) { showMsg('❌ ' + data.error); return; }
+  state = data.state;
+  reinforcementsLeft = 0;
+  attackFrom = null;
+  render();
+}
+
+async function doAttack(from, to) {
+  const dice = parseInt(document.getElementById('dice-slider')?.value || 3);
+  const res = await fetch('/api/attack', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({from, to, dice})
+  });
+  const data = await res.json();
+  if (data.error) { showMsg('❌ ' + data.error); return; }
+
+  // Show dice results
+  showDiceResult(data);
+  state = data.state;
+
+  if (data.conquered) {
+    showMsg(`⚔ CONQUERED ${to}!`);
+    attackFrom = null;
+    selectedTerritory = null;
+  }
+  if (data.eliminated) showMsg(`💀 ${data.eliminated} has been eliminated!`);
+  if (data.winner) {
+    state = data.state;
+    render();
+    return;
+  }
+
+  render();
+  // If source territory was depleted, clear selection
+  if (state.territories[from]?.armies < 2) {
+    attackFrom = null;
+    renderActions();
+    renderMap();
+  }
+}
+
+function showDiceResult(data) {
+  const section = document.getElementById('dice-section');
+  const result = document.getElementById('dice-result');
+  section.style.display = 'block';
+  result.style.display = 'block';
+
+  const atkDice = data.atk_rolls.map(r => `<div class="die atk">${r}</div>`).join('');
+  const defDice = data.def_rolls.map(r => `<div class="die def">${r}</div>`).join('');
+
+  result.innerHTML = `
+    <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.3rem">${data.from} → ${data.to}</div>
+    <div style="display:flex;gap:1rem;justify-content:center;align-items:center">
+      <div>
+        <div style="font-size:0.7rem;color:#ff8888;margin-bottom:0.2rem">ATTACK</div>
+        <div class="dice-row">${atkDice}</div>
+      </div>
+      <div style="color:var(--gold);font-size:1.2rem">VS</div>
+      <div>
+        <div style="font-size:0.7rem;color:#8899ff;margin-bottom:0.2rem">DEFENSE</div>
+        <div class="dice-row">${defDice}</div>
+      </div>
+    </div>
+    <div style="margin-top:0.4rem;font-size:0.78rem">
+      ${data.conquered ? '<span style="color:#66ff66">⚔ TERRITORY CONQUERED!</span>' :
+        `<span style="color:#ff8888">Attacker lost: ${data.atk_losses}</span>  |  <span style="color:#8899ff">Defender lost: ${data.def_losses}</span>`}
+    </div>
+  `;
+}
+
+async function doEndAttack() {
+  const res = await fetch('/api/end_attack', {method:'POST'});
+  const data = await res.json();
+  if (data.error) { showMsg(data.error); return; }
+  attackFrom = null;
+  selectedTerritory = null;
+  state = data.state;
+  document.getElementById('dice-section').style.display = 'none';
+  render();
+}
+
+async function doFortify(from, to) {
+  const armies = parseInt(document.getElementById('fort-slider')?.value || 1);
+  const res = await fetch('/api/fortify', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({from, to, armies})
+  });
+  const data = await res.json();
+  if (data.error) { showMsg('❌ ' + data.error); return; }
+  attackFrom = null;
+  selectedTerritory = null;
+  state = data.state;
+  reinforcementsLeft = state.reinforcements_available || 0;
+  render();
+}
+
+async function doSkipFortify() {
+  const res = await fetch('/api/skip_fortify', {method:'POST'});
+  const data = await res.json();
+  if (data.error) { showMsg(data.error); return; }
+  attackFrom = null;
+  selectedTerritory = null;
+  state = data.state;
+  reinforcementsLeft = state.reinforcements_available || 0;
+  render();
+}
+
+// ===== TOOLTIP =====
+function showTooltip(e, name) {
+  const data = state?.territories[name];
+  if (!data) return;
+  const owner = state.players.find(p => p.id === data.owner);
+  document.getElementById('tt-name').textContent = name;
+  document.getElementById('tt-info').innerHTML =
+    `<span style="color:${owner?.color}">${owner?.name || 'Unclaimed'}</span> | ${data.armies} armies`;
+  const tt = document.getElementById('tooltip');
+  tt.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const tt = document.getElementById('tooltip');
+  tt.style.left = (e.clientX + 12) + 'px';
+  tt.style.top = (e.clientY - 30) + 'px';
+}
+function hideTooltip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+// ===== MSG BANNER =====
+let msgTimer;
+function showMsg(text) {
+  const banner = document.getElementById('msg-banner');
+  banner.textContent = text;
+  banner.style.display = 'block';
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { banner.style.display = 'none'; }, 3000);
+}
+
+// ===== START =====
+init().then(() => {
+  // Build continent legend after state loads
+  if (!state) return;
+  const list = document.getElementById('continent-list');
+  for (const [name, data] of Object.entries(state.continents)) {
+    const div = document.createElement('div');
+    div.className = 'cont-item';
+    div.innerHTML = `
+      <div class="cont-dot" style="background:${data.color}"></div>
+      <span style="font-size:0.72rem">${name}</span>
+      <span class="cont-bonus">+${data.bonus}</span>
+    `;
+    list.appendChild(div);
+  }
+});
+</script>
+</body>
+</html>

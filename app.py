@@ -1,73 +1,122 @@
-from flask import Flask, render_template, jsonify, request, session
-from game_engine import GameState
+from flask import Flask, render_template, request, jsonify, session
 import json
-import os
+from game_logic import Game
+from game_data import CONTINENTS, ALL_TERRITORIES, ADJACENCIES
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = "risk_global_secret_2024"
 
-game_store = {}
+games = {}
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+@app.route("/game")
+def game_page():
+    return render_template("game.html")
+
 @app.route("/api/new_game", methods=["POST"])
 def new_game():
     data = request.json
-    num_cpu = int(data.get("num_cpu", 3))
-    game_id = "game1"
-    game_store[game_id] = GameState(num_cpu=num_cpu)
+    num_ai = int(data.get("num_ai", 2))
+    num_ai = max(1, min(10, num_ai))
+    game_id = "game_" + str(id({}))
+    games[game_id] = Game(num_ai)
     session["game_id"] = game_id
-    return jsonify({"ok": True, "state": game_store[game_id].to_dict()})
+    return jsonify({"game_id": game_id, "state": games[game_id].get_state()})
 
 @app.route("/api/state")
 def get_state():
-    gid = session.get("game_id")
-    if not gid or gid not in game_store:
-        return jsonify({"ok": False, "msg": "No game"})
-    return jsonify({"ok": True, "state": game_store[gid].to_dict()})
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        return jsonify({"error": "No game"}), 404
+    g = games[game_id]
+    state = g.get_state()
+    state["reinforcements_available"] = g.calculate_reinforcements(0) if g.phase == "reinforce" and g.current_player_idx == 0 else 0
+    return jsonify(state)
 
 @app.route("/api/reinforce", methods=["POST"])
 def reinforce():
-    gid = session.get("game_id")
-    if not gid or gid not in game_store:
-        return jsonify({"ok": False, "msg": "No game"})
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        return jsonify({"error": "No game"}), 404
     data = request.json
-    result = game_store[gid].place_reinforcement(data["territory"], data["count"])
-    result["state"] = game_store[gid].to_dict()
+    g = games[game_id]
+    result = g.reinforce(0, data["territory"], int(data["armies"]))
+    if "error" not in result:
+        result["state"] = g.get_state()
     return jsonify(result)
 
 @app.route("/api/attack", methods=["POST"])
 def attack():
-    gid = session.get("game_id")
-    if not gid or gid not in game_store:
-        return jsonify({"ok": False, "msg": "No game"})
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        return jsonify({"error": "No game"}), 404
     data = request.json
-    result = game_store[gid].attack(data["from"], data["to"], data.get("attackers", 3))
-    result["state"] = game_store[gid].to_dict()
+    g = games[game_id]
+    result = g.attack(0, data["from"], data["to"], int(data.get("dice", 3)))
+    if "error" not in result:
+        result["state"] = g.get_state()
+    return jsonify(result)
+
+@app.route("/api/end_attack", methods=["POST"])
+def end_attack():
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        return jsonify({"error": "No game"}), 404
+    g = games[game_id]
+    result = g.end_attack(0)
+    if "error" not in result:
+        result["state"] = g.get_state()
     return jsonify(result)
 
 @app.route("/api/fortify", methods=["POST"])
 def fortify():
-    gid = session.get("game_id")
-    if not gid or gid not in game_store:
-        return jsonify({"ok": False, "msg": "No game"})
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        return jsonify({"error": "No game"}), 404
     data = request.json
-    result = game_store[gid].fortify(data["from"], data["to"], data["count"])
-    result["state"] = game_store[gid].to_dict()
+    g = games[game_id]
+    result = g.fortify(0, data["from"], data["to"], int(data["armies"]))
+    if "error" not in result:
+        result["state"] = g.get_state()
+        # Advance past AI turns
+        while not g.winner and not g.players[g.current_player_idx].is_human:
+            pass  # AI turns handled automatically in _end_turn
+        result["state"] = g.get_state()
     return jsonify(result)
 
-@app.route("/api/end_turn", methods=["POST"])
-def end_turn():
-    gid = session.get("game_id")
-    if not gid or gid not in game_store:
-        return jsonify({"ok": False, "msg": "No game"})
-    g = game_store[gid]
-    if g.phase == "reinforcement" and g.pending_reinforcements > 0:
-        return jsonify({"ok": False, "msg": f"Place your {g.pending_reinforcements} troops first"})
-    g.end_turn()
-    return jsonify({"ok": True, "state": g.to_dict()})
+@app.route("/api/skip_fortify", methods=["POST"])
+def skip_fortify():
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        return jsonify({"error": "No game"}), 404
+    g = games[game_id]
+    result = g.skip_fortify(0)
+    if "error" not in result:
+        result["state"] = g.get_state()
+    return jsonify(result)
+
+@app.route("/api/trade_cards", methods=["POST"])
+def trade_cards():
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        return jsonify({"error": "No game"}), 404
+    data = request.json
+    g = games[game_id]
+    result = g.trade_cards(0, data["card_indices"])
+    if "error" not in result:
+        result["state"] = g.get_state()
+    return jsonify(result)
+
+@app.route("/api/map_data")
+def map_data():
+    return jsonify({
+        "territories": ALL_TERRITORIES,
+        "continents": CONTINENTS,
+        "adjacencies": ADJACENCIES
+    })
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
