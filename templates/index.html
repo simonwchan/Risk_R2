@@ -3,337 +3,58 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Risk Global - World Domination</title>
+<title>Risk Global</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=IM+Fell+English&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --gold: #C9A84C;
-    --gold-light: #F0D080;
-    --blood: #8B1A1A;
-    --dark: #0A0A0F;
-    --parchment: #E8D8B0;
-    --ink: #1A1208;
-  }
-
-  body {
-    background: var(--dark);
-    color: var(--parchment);
-    font-family: 'IM Fell English', serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-    position: relative;
-  }
-
-  /* Animated star field */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 20% 30%, #1a1040 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 70%, #1a0a20 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, #0d0818 0%, #0A0A0F 100%);
-    z-index: -2;
-  }
-
-  .stars {
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background-image:
-      radial-gradient(1px 1px at 10% 20%, rgba(255,255,200,0.8) 0%, transparent 100%),
-      radial-gradient(1px 1px at 25% 60%, rgba(255,255,200,0.6) 0%, transparent 100%),
-      radial-gradient(1px 1px at 40% 15%, rgba(255,255,200,0.9) 0%, transparent 100%),
-      radial-gradient(1px 1px at 60% 80%, rgba(255,255,200,0.5) 0%, transparent 100%),
-      radial-gradient(1px 1px at 75% 35%, rgba(255,255,200,0.7) 0%, transparent 100%),
-      radial-gradient(1px 1px at 90% 55%, rgba(255,255,200,0.8) 0%, transparent 100%),
-      radial-gradient(2px 2px at 15% 85%, rgba(255,220,100,0.6) 0%, transparent 100%),
-      radial-gradient(1px 1px at 55% 45%, rgba(255,255,200,0.9) 0%, transparent 100%),
-      radial-gradient(1px 1px at 85% 10%, rgba(255,255,200,0.7) 0%, transparent 100%),
-      radial-gradient(2px 2px at 35% 75%, rgba(255,220,100,0.5) 0%, transparent 100%);
-  }
-
-  .container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    justify-content: center;
-  }
-
-  /* Decorative border frame */
-  .frame {
-    border: 2px solid var(--gold);
-    border-radius: 4px;
-    padding: 3rem 4rem;
-    position: relative;
-    width: 100%;
-    max-width: 680px;
-    background: rgba(10, 8, 20, 0.85);
-    backdrop-filter: blur(4px);
-    box-shadow: 0 0 60px rgba(201, 168, 76, 0.15), inset 0 0 40px rgba(0,0,0,0.5);
-  }
-
-  .frame::before, .frame::after,
-  .frame .corner-tl, .frame .corner-tr,
-  .frame .corner-bl, .frame .corner-br {
-    content: '✦';
-    position: absolute;
-    color: var(--gold);
-    font-size: 1.2rem;
-    line-height: 1;
-  }
-  .frame::before { top: -0.7rem; left: -0.7rem; }
-  .frame::after { top: -0.7rem; right: -0.7rem; }
-  .frame .corner-bl { bottom: -0.7rem; left: -0.7rem; content: '✦'; }
-  .frame .corner-br { bottom: -0.7rem; right: -0.7rem; content: '✦'; }
-
-  h1 {
-    font-family: 'Cinzel Decorative', serif;
-    font-size: clamp(2rem, 5vw, 3.2rem);
-    font-weight: 900;
-    color: var(--gold);
-    text-align: center;
-    letter-spacing: 0.05em;
-    text-shadow: 0 0 30px rgba(201,168,76,0.5), 0 2px 4px rgba(0,0,0,0.8);
-    margin-bottom: 0.3rem;
-    line-height: 1.1;
-  }
-
-  .subtitle {
-    font-family: 'Cinzel', serif;
-    font-size: 0.85rem;
-    color: var(--gold-light);
-    text-align: center;
-    letter-spacing: 0.4em;
-    text-transform: uppercase;
-    opacity: 0.8;
-    margin-bottom: 2.5rem;
-  }
-
-  .divider {
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(to right, transparent, var(--gold), transparent);
-    margin: 1.5rem 0;
-    opacity: 0.6;
-  }
-
-  .tagline {
-    text-align: center;
-    font-size: 1.05rem;
-    color: #C8BFA0;
-    font-style: italic;
-    line-height: 1.7;
-    margin-bottom: 2rem;
-  }
-
-  .setup-section h2 {
-    font-family: 'Cinzel', serif;
-    color: var(--gold);
-    font-size: 0.95rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-
-  .ai-selector {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-bottom: 2rem;
-  }
-
-  .ai-btn {
-    background: transparent;
-    border: 1px solid rgba(201,168,76,0.4);
-    color: var(--gold-light);
-    font-family: 'Cinzel', serif;
-    font-size: 0.9rem;
-    padding: 0.5rem 1.1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 2px;
-  }
-
-  .ai-btn:hover, .ai-btn.selected {
-    background: rgba(201,168,76,0.15);
-    border-color: var(--gold);
-    color: var(--gold);
-    box-shadow: 0 0 12px rgba(201,168,76,0.2);
-  }
-
-  .start-btn {
-    display: block;
-    width: 100%;
-    padding: 1.1rem 2rem;
-    background: linear-gradient(135deg, #7a1a1a, var(--blood));
-    border: 1px solid var(--gold);
-    color: var(--gold-light);
-    font-family: 'Cinzel Decorative', serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s;
-    border-radius: 2px;
-    text-transform: uppercase;
-    box-shadow: 0 4px 20px rgba(139,26,26,0.4);
-  }
-
-  .start-btn:hover {
-    background: linear-gradient(135deg, #9a2a2a, #a02020);
-    box-shadow: 0 6px 30px rgba(139,26,26,0.6), 0 0 20px rgba(201,168,76,0.2);
-    transform: translateY(-1px);
-  }
-
-  .rules-preview {
-    margin-top: 2rem;
-    padding: 1rem 1.5rem;
-    background: rgba(201,168,76,0.05);
-    border-left: 2px solid rgba(201,168,76,0.3);
-  }
-
-  .rules-preview h3 {
-    font-family: 'Cinzel', serif;
-    color: var(--gold);
-    font-size: 0.8rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 0.7rem;
-  }
-
-  .rules-preview ul {
-    list-style: none;
-    font-size: 0.88rem;
-    color: #B0A888;
-    line-height: 2;
-  }
-
-  .rules-preview ul li::before {
-    content: '⚔ ';
-    color: var(--gold);
-    opacity: 0.7;
-  }
-
-  .globe-deco {
-    font-size: 4rem;
-    text-align: center;
-    margin-bottom: 1rem;
-    filter: drop-shadow(0 0 20px rgba(201,168,76,0.4));
-    animation: float 4s ease-in-out infinite;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-  }
-
-  .player-count-label {
-    text-align: center;
-    color: #C8BFA0;
-    font-size: 0.9rem;
-    margin-bottom: 0.8rem;
-  }
-
-  #selectedCount {
-    color: var(--gold);
-    font-family: 'Cinzel', serif;
-    font-weight: 600;
-  }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080810;color:#D8CCB0;font-family:'IM Fell English',serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.wrap{max-width:600px;width:90%;text-align:center}
+h1{font-family:'Cinzel Decorative',serif;color:#C9A84C;font-size:clamp(2rem,6vw,3.5rem);text-shadow:0 0 40px rgba(201,168,76,0.4);margin-bottom:.3rem}
+.sub{font-family:'Cinzel',serif;letter-spacing:.4em;font-size:.8rem;color:#9A8860;text-transform:uppercase;margin-bottom:2rem}
+.box{border:1px solid rgba(201,168,76,0.3);padding:2.5rem;background:rgba(0,0,0,0.4)}
+.box h2{font-family:'Cinzel',serif;color:#C9A84C;font-size:.85rem;letter-spacing:.25em;text-transform:uppercase;margin-bottom:1rem}
+.btns{display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem;margin-bottom:1.5rem}
+.nb{background:transparent;border:1px solid rgba(201,168,76,0.35);color:#C9A84C;font-family:'Cinzel',serif;font-size:.9rem;padding:.45rem 1rem;cursor:pointer;transition:all .2s;border-radius:2px}
+.nb:hover,.nb.sel{background:rgba(201,168,76,0.15);border-color:#C9A84C}
+.go{display:block;width:100%;padding:1rem;background:linear-gradient(135deg,#6a1010,#8B1A1A);border:1px solid #C9A84C;color:#F0D080;font-family:'Cinzel Decorative',serif;font-size:1rem;letter-spacing:.15em;cursor:pointer;transition:all .3s;border-radius:2px}
+.go:hover{background:linear-gradient(135deg,#8a1818,#a02020);box-shadow:0 4px 20px rgba(139,26,26,.5)}
+.rules{margin-top:1.5rem;font-size:.82rem;color:#8A8070;line-height:1.9;text-align:left}
+.rules b{color:#C9A84C}
 </style>
 </head>
 <body>
-<div class="stars"></div>
-<div class="container">
-  <div class="frame">
-    <span class="corner-bl"></span>
-    <span class="corner-br"></span>
-
-    <div class="globe-deco">🌍</div>
-    <h1>Risk Global</h1>
-    <p class="subtitle">World Domination Awaits</p>
-
-    <div class="divider"></div>
-
-    <p class="tagline">
-      A rebalanced world strategy game — every continent
-      commands the attention it deserves. Forge alliances,
-      marshal your armies, and seize the globe.
-    </p>
-
-    <div class="divider"></div>
-
-    <div class="setup-section">
-      <h2>Choose Your Opponents</h2>
-      <p class="player-count-label">AI Players: <span id="selectedCount">3</span></p>
-      <div class="ai-selector" id="aiSelector">
-        <button class="ai-btn" data-n="2">2</button>
-        <button class="ai-btn selected" data-n="3">3</button>
-        <button class="ai-btn" data-n="4">4</button>
-        <button class="ai-btn" data-n="5">5</button>
-        <button class="ai-btn" data-n="6">6</button>
-        <button class="ai-btn" data-n="7">7</button>
-        <button class="ai-btn" data-n="8">8</button>
-        <button class="ai-btn" data-n="9">9</button>
-        <button class="ai-btn" data-n="10">10</button>
-      </div>
-
-      <button class="start-btn" id="startBtn">⚔ Launch Campaign ⚔</button>
-    </div>
-
-    <div class="rules-preview">
-      <h3>How to Play</h3>
-      <ul>
-        <li>Reinforce: Place armies on your territories each turn</li>
-        <li>Attack: Roll dice to conquer enemy territories</li>
-        <li>Fortify: Move armies to strengthen your borders</li>
-        <li>Continents: Hold all territories for bonus armies</li>
-        <li>Cards: Trade sets for bonus reinforcements</li>
-        <li>Win: Eliminate all opponents to rule the world</li>
-      </ul>
+<div class="wrap">
+  <h1>Risk Global</h1>
+  <p class="sub">World Domination</p>
+  <div class="box">
+    <h2>Number of AI Opponents</h2>
+    <div class="btns" id="btns"></div>
+    <button class="go" id="go">⚔ Begin Campaign ⚔</button>
+    <div class="rules">
+      <b>Reinforce</b> — place armies on your territories each turn<br>
+      <b>Attack</b> — roll dice to conquer enemy territories<br>
+      <b>Fortify</b> — move armies to strengthen your borders<br>
+      <b>Win</b> — eliminate all opponents to rule the world
     </div>
   </div>
 </div>
-
 <script>
-let selectedAI = 3;
-
-document.querySelectorAll('.ai-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.ai-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedAI = parseInt(btn.dataset.n);
-    document.getElementById('selectedCount').textContent = selectedAI;
-  });
-});
-
-document.getElementById('startBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('startBtn');
-  btn.textContent = '⏳ Mobilizing Forces...';
-  btn.disabled = true;
-  try {
-    const res = await fetch('/api/new_game', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({num_ai: selectedAI})
-    });
-    const data = await res.json();
-    if (data.game_id) {
-      window.location.href = '/game';
-    }
-  } catch(e) {
-    btn.textContent = '⚔ Launch Campaign ⚔';
-    btn.disabled = false;
-    alert('Error starting game: ' + e.message);
-  }
-});
+let chosen = 3;
+const cont = document.getElementById('btns');
+for(let i=2;i<=10;i++){
+  const b=document.createElement('button');
+  b.className='nb'+(i===3?' sel':'');
+  b.textContent=i;
+  b.onclick=()=>{document.querySelectorAll('.nb').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');chosen=i};
+  cont.appendChild(b);
+}
+document.getElementById('go').onclick=async()=>{
+  const btn=document.getElementById('go');
+  btn.textContent='Mobilising...';btn.disabled=true;
+  const r=await fetch('/api/new',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({num_ai:chosen})});
+  if((await r.json()).ok) window.location.href='/game';
+  else{btn.textContent='⚔ Begin Campaign ⚔';btn.disabled=false;}
+};
 </script>
 </body>
 </html>
