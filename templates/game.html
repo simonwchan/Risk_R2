@@ -5,13 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Risk Global - Battle Map</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English&family=Oswald:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --gold:#C9A84C;--gold-light:#F0D080;--blood:#8B1A1A;
-  --dark:#0A0A0F;--panel:#0F0F1A;--border:rgba(201,168,76,0.25);
-  --text:#D8CCB0;--text-dim:#8A8070;
-}
+:root{--gold:#C9A84C;--gold-light:#F0D080;--dark:#0A0A0F;--panel:#0F0F1A;--border:rgba(201,168,76,0.25);--text:#D8CCB0;--text-dim:#8A8070;}
 html,body{height:100%;overflow:hidden}
 body{background:var(--dark);color:var(--text);font-family:'Oswald',sans-serif;display:flex;flex-direction:column}
 #topbar{display:flex;align-items:center;justify-content:space-between;padding:0.5rem 1rem;background:rgba(0,0,0,0.7);border-bottom:1px solid var(--border);flex-shrink:0;backdrop-filter:blur(4px);}
@@ -19,8 +17,20 @@ body{background:var(--dark);color:var(--text);font-family:'Oswald',sans-serif;di
 #phase-indicator{font-family:'Cinzel',serif;font-size:0.8rem;letter-spacing:0.2em;padding:0.3rem 1rem;border:1px solid var(--gold);color:var(--gold);text-transform:uppercase;background:rgba(201,168,76,0.08);}
 #turn-info{font-size:0.8rem;color:var(--text-dim)}
 #main{display:flex;flex:1;overflow:hidden}
-#map-area{flex:1;position:relative;overflow:hidden;background:#071018}
-#world-map{width:100%;height:100%;cursor:default}
+#map-area{flex:1;position:relative;overflow:hidden;background:#07141f}
+#map-area svg{width:100%;height:100%}
+.territory-path{cursor:pointer;transition:opacity 0.12s;stroke-linejoin:round;stroke-linecap:round}
+.territory-path:hover{opacity:0.82}
+.territory-border{pointer-events:none;fill:none;stroke-linejoin:round}
+.graticule{fill:none;stroke:rgba(100,160,220,0.07);stroke-width:0.5}
+.sphere-bg{fill:#071828}
+.army-badge-bg{pointer-events:none}
+.army-badge-txt{font-family:'Oswald',sans-serif;font-weight:700;fill:white;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.terr-label{font-family:'Oswald',sans-serif;font-weight:300;fill:rgba(255,255,255,0.9);text-anchor:middle;dominant-baseline:central;pointer-events:none;letter-spacing:0.04em}
+.conn-line{stroke:rgba(255,255,255,0.12);stroke-width:0.8;fill:none;pointer-events:none}
+.atk-pulse{animation:atkpulse 0.9s infinite}
+@keyframes atkpulse{0%,100%{opacity:1}50%{opacity:0.5}}
+
 #sidebar{width:300px;flex-shrink:0;display:flex;flex-direction:column;background:var(--panel);border-left:1px solid var(--border);overflow-y:auto;}
 .panel-section{padding:0.8rem 1rem;border-bottom:1px solid var(--border)}
 .panel-section h3{font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-bottom:0.6rem;}
@@ -60,22 +70,19 @@ input[type=range]{flex:1;accent-color:var(--gold)}
 .cards-area{display:flex;flex-wrap:wrap}
 #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center;}
 #overlay.show{display:flex}
-.modal{background:var(--panel);border:1px solid var(--gold);padding:2rem;max-width:440px;width:90%;border-radius:4px;text-align:center;font-family:'IM Fell English',serif;}
+.modal{background:var(--panel);border:1px solid var(--gold);padding:2rem;max-width:440px;width:90%;border-radius:4px;text-align:center;}
 .modal h2{font-family:'Cinzel',serif;color:var(--gold);font-size:1.8rem;margin-bottom:1rem}
 .modal p{color:var(--text);font-size:1rem;line-height:1.7;margin-bottom:1.5rem}
 #tooltip{display:none;position:fixed;background:rgba(5,5,15,0.95);border:1px solid var(--gold);padding:0.5rem 0.8rem;font-size:0.78rem;pointer-events:none;z-index:50;border-radius:2px;min-width:140px;}
 #tooltip .tt-name{font-family:'Cinzel',serif;color:var(--gold);font-size:0.82rem}
 #tooltip .tt-info{color:var(--text-dim);margin-top:0.2rem}
-.terr-shape{cursor:pointer;transition:opacity 0.15s}
-.terr-shape:hover{opacity:0.82}
-.terr-name-label{font-family:'Oswald',sans-serif;font-size:7.5px;font-weight:400;fill:rgba(255,255,255,0.9);text-anchor:middle;dominant-baseline:central;pointer-events:none;letter-spacing:0.04em;}
-.terr-army-label{font-family:'Oswald',sans-serif;font-size:10px;font-weight:700;fill:white;text-anchor:middle;dominant-baseline:central;pointer-events:none;}
-.connection-line{stroke:rgba(255,255,255,0.10);stroke-width:1;pointer-events:none}
-#msg-banner{display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(10,10,20,0.95);border:1px solid var(--gold);padding:0.6rem 1.5rem;font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);z-index:60;border-radius:2px;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+#msg-banner{display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(10,10,20,0.95);border:1px solid var(--gold);padding:0.6rem 1.5rem;font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);z-index:60;border-radius:2px;white-space:nowrap;}
+#map-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#07141f;z-index:10;font-family:'Cinzel',serif;color:var(--gold);font-size:1rem;letter-spacing:0.2em;flex-direction:column;gap:1rem}
+#map-loading .spinner{width:40px;height:40px;border:3px solid rgba(201,168,76,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:rgba(0,0,0,0.2)}
 ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:2px}
-@keyframes pulse-attack{0%,100%{opacity:1}50%{opacity:0.6}}
 </style>
 </head>
 <body>
@@ -86,42 +93,14 @@ input[type=range]{flex:1;accent-color:var(--gold)}
 </div>
 <div id="main">
   <div id="map-area">
-    <svg id="world-map" viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="mapbg" cx="50%" cy="40%" r="75%">
-          <stop offset="0%" style="stop-color:#0a1828"/><stop offset="100%" style="stop-color:#040a10"/>
-        </radialGradient>
-        <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        <filter id="txtshadow" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="black" flood-opacity="1"/>
-        </filter>
-      </defs>
-      <rect width="1100" height="580" fill="url(#mapbg)"/>
-      <g stroke="rgba(100,160,220,0.04)" stroke-width="1">
-        <line x1="0" y1="145" x2="1100" y2="145"/><line x1="0" y1="290" x2="1100" y2="290"/>
-        <line x1="0" y1="435" x2="1100" y2="435"/><line x1="275" y1="0" x2="275" y2="580"/>
-        <line x1="550" y1="0" x2="550" y2="580"/><line x1="825" y1="0" x2="825" y2="580"/>
-      </g>
-      <text x="340" y="495" font-family="Oswald" font-size="10" fill="rgba(100,160,220,0.15)" text-anchor="middle" letter-spacing="5">ATLANTIC OCEAN</text>
-      <text x="100" y="470" font-family="Oswald" font-size="9" fill="rgba(100,160,220,0.12)" text-anchor="middle" letter-spacing="3">PACIFIC</text>
-      <text x="720" y="525" font-family="Oswald" font-size="9" fill="rgba(100,160,220,0.12)" text-anchor="middle" letter-spacing="3">INDIAN OCEAN</text>
-      <g id="connections-layer"></g>
-      <g id="shapes-layer"></g>
-      <g id="borders-layer"></g>
-      <g id="labels-layer"></g>
-      <g id="armies-layer"></g>
-      <g id="highlights-layer"></g>
-    </svg>
+    <div id="map-loading"><div class="spinner"></div>LOADING MAP...</div>
   </div>
   <div id="sidebar">
     <div class="panel-section"><h3>Players</h3><div id="player-list"></div></div>
     <div class="panel-section"><h3>Selected Territory</h3>
       <div id="territory-info" class="territory-info"><div style="color:var(--text-dim);font-size:0.8rem;font-style:italic">Click a territory to select it</div></div>
     </div>
-    <div id="action-panel"><div id="action-content"><div style="color:var(--text-dim);font-size:0.82rem;font-style:italic;text-align:center;margin-top:1rem">Loading game...</div></div></div>
+    <div id="action-panel"><div id="action-content"><div style="color:var(--text-dim);font-size:0.82rem;font-style:italic;text-align:center;margin-top:1rem">Loading...</div></div></div>
     <div class="panel-section" id="dice-section" style="display:none"><h3>Battle Result</h3><div id="dice-result"></div></div>
     <div class="panel-section"><h3>Cards (<span id="card-count">0</span>)</h3>
       <div id="cards-area" class="cards-area"></div>
@@ -141,23 +120,208 @@ input[type=range]{flex:1;accent-color:var(--gold)}
 </div>
 
 <script>
-const POSITIONS = {
-  "Alaska":[55,85],"Western Canada":[110,120],"Eastern Canada":[195,110],"Quebec":[245,140],
-  "Pacific Northwest":[90,165],"Great Plains":[145,185],"Eastern USA":[200,210],"Southern USA":[165,255],
-  "Mexico":[130,300],"Central America":[155,340],"Venezuela & Colombia":[210,375],"Brazil North":[255,400],
-  "Brazil South":[255,445],"Peru & Bolivia":[210,430],"Argentina & Chile":[225,490],"Iceland":[390,80],
-  "British Isles":[420,120],"Scandinavia":[490,85],"Western Europe":[430,170],"Central Europe":[490,155],
-  "Southern Europe":[490,200],"Eastern Europe":[555,155],"Ukraine & Caucasus":[605,175],"North Africa":[460,280],
-  "West Africa":[440,340],"Central Africa":[500,380],"East Africa":[560,360],"South Africa":[510,450],
-  "Madagascar":[580,430],"Turkey & Levant":[600,215],"Arabian Peninsula":[625,280],"Iran & Iraq":[655,235],
-  "Central Asia":[695,185],"Afghanistan & Pakistan":[700,240],"India":[730,295],"Sri Lanka & South India":[750,345],
-  "Southeast Asia Mainland":[790,310],"Indonesia & Malaysia":[840,370],"Philippines":[880,320],"Indochina":[830,280],
-  "China North":[800,210],"China South":[820,260],"Manchuria & Korea":[865,195],"Japan":[920,195],
-  "Mongolia & Siberia East":[820,160],"Taiwan":[880,265],"Western Russia":[600,120],"Siberia West":[680,120],
-  "Siberia Central":[760,110],"Siberia East":[880,120],"Kamchatka":[960,100],"Western Australia":[900,460],
-  "Eastern Australia":[960,450],"New Zealand & Pacific":[1035,480]
+// =====================================================================
+// TERRITORY -> ISO NUMERIC COUNTRY CODE MAPPING
+// =====================================================================
+// Countries split across multiple territories are handled by longitude/latitude clipping
+const COUNTRY_TO_TERRITORY = {
+  // North America
+  840: "USA",       // handled by longitude split below
+  124: "CANADA",    // handled by split
+  484: "Mexico",
+  // Central America & Caribbean
+  188:"Central America", 222:"Central America", 320:"Central America",
+  340:"Central America", 558:"Central America", 591:"Central America",
+  192:"Central America", 214:"Central America", 332:"Central America",
+  388:"Central America", 630:"Central America", 44:"Central America",
+  84:"Central America", 659:"Central America", 662:"Central America",
+  670:"Central America", 780:"Central America", 28:"Central America",
+
+  // South America
+  170:"Venezuela & Colombia", 862:"Venezuela & Colombia",
+  // Brazil handled by split
+  76:"BRAZIL",
+  68:"Peru & Bolivia", 604:"Peru & Bolivia",
+  32:"Argentina & Chile", 152:"Argentina & Chile",
+  858:"Argentina & Chile", // Uruguay
+  600:"Peru & Bolivia",    // Paraguay
+  740:"Venezuela & Colombia", // Suriname
+  328:"Venezuela & Colombia", // Guyana
+  218:"Peru & Bolivia",    // Ecuador
+
+  // Europe
+  352:"Iceland",
+  826:"British Isles", 372:"British Isles",
+  578:"Scandinavia", 752:"Scandinavia", 208:"Scandinavia", 246:"Scandinavia", 233:"Scandinavia",
+  250:"Western Europe", 724:"Western Europe", 620:"Western Europe",
+  56:"Western Europe", 442:"Western Europe", 528:"Western Europe",
+  276:"Central Europe", 40:"Central Europe", 756:"Central Europe",
+  203:"Central Europe", 703:"Central Europe",
+  380:"Southern Europe", 300:"Southern Europe", 688:"Southern Europe",
+  191:"Southern Europe", 705:"Southern Europe", 70:"Southern Europe",
+  807:"Southern Europe", 8:"Southern Europe", 292:"Southern Europe",
+  470:"Southern Europe", 705:"Southern Europe",
+  616:"Eastern Europe", 348:"Eastern Europe", 642:"Eastern Europe",
+  100:"Eastern Europe", 498:"Eastern Europe",
+  // Ukraine & Caucasus
+  804:"Ukraine & Caucasus", 268:"Ukraine & Caucasus",
+  51:"Ukraine & Caucasus", 31:"Ukraine & Caucasus",
+  112:"Eastern Europe", // Belarus
+  440:"Eastern Europe", 428:"Eastern Europe", 233:"Eastern Europe", // Baltics
+
+  // Africa
+  504:"North Africa", 788:"North Africa", 434:"North Africa",
+  818:"North Africa", 12:"North Africa", 729:"North Africa", 736:"North Africa",
+  204:"West Africa", 854:"West Africa", 384:"West Africa", 288:"West Africa",
+  324:"West Africa", 466:"West Africa", 562:"West Africa", 686:"West Africa",
+  694:"West Africa", 270:"West Africa", 624:"West Africa", 430:"West Africa",
+  566:"West Africa", // Nigeria
+  768:"West Africa", // Togo
+  120:"Central Africa", 140:"Central Africa", 178:"Central Africa",
+  180:"Central Africa", 266:"Central Africa", 646:"Central Africa",
+  800:"Central Africa", 706:"Central Africa", 232:"East Africa",
+  108:"East Africa", 231:"East Africa", 404:"East Africa",
+  508:"East Africa", 716:"East Africa", 834:"East Africa",
+  174:"East Africa", 262:"East Africa",
+  24:"South Africa", 72:"South Africa", 426:"South Africa",
+  516:"South Africa", 710:"South Africa", 748:"South Africa",
+  454:"East Africa", 450:"Madagascar",
+
+  // Middle East
+  792:"Turkey & Levant",
+  400:"Turkey & Levant", 422:"Turkey & Levant", 760:"Turkey & Levant",
+  275:"Turkey & Levant",
+  682:"Arabian Peninsula", 887:"Arabian Peninsula", 512:"Arabian Peninsula",
+  784:"Arabian Peninsula", 48:"Arabian Peninsula", 634:"Arabian Peninsula",
+  364:"Iran & Iraq", 368:"Iran & Iraq",
+
+  // Central Asia
+  398:"Central Asia", 417:"Central Asia", 762:"Central Asia",
+  795:"Central Asia", 860:"Central Asia",
+  4:"Afghanistan & Pakistan", 586:"Afghanistan & Pakistan",
+
+  // South & SE Asia
+  356:"India",
+  144:"Sri Lanka & South India",
+  116:"Indochina", 418:"Indochina", 704:"Indochina",
+  50:"Southeast Asia Mainland", 104:"Southeast Asia Mainland",
+  360:"Indonesia & Malaysia", 458:"Indonesia & Malaysia",
+  764:"Indonesia & Malaysia", 96:"Indonesia & Malaysia",
+  608:"Philippines",
+
+  // East Asia
+  // China handled by split
+  156:"CHINA",
+  408:"Manchuria & Korea", 410:"Manchuria & Korea",
+  392:"Japan", 158:"Taiwan",
+  496:"Mongolia & Siberia East", // Mongolia
+
+  // Russia - handled by longitude split
+  643:"RUSSIA",
+
+  // Oceania
+  // Australia handled by split
+  36:"AUSTRALIA",
+  554:"New Zealand & Pacific",
+  242:"New Zealand & Pacific", 598:"New Zealand & Pacific",
+  776:"New Zealand & Pacific", 882:"New Zealand & Pacific",
+  90:"New Zealand & Pacific", 548:"New Zealand & Pacific",
 };
 
+// For countries that span multiple territories, define split rules by longitude
+const SPLIT_RULES = {
+  "USA": (lon, lat) => {
+    if (lon < -141) return "Alaska";
+    if (lon < -100) return "Pacific Northwest";  // rough split
+    if (lat < 36.5) return "Southern USA";
+    if (lon < -90) return "Great Plains";
+    return "Eastern USA";
+  },
+  "CANADA": (lon, lat) => {
+    if (lon < -95) return "Western Canada";
+    if (lat > 46 && lon > -79) return "Quebec";
+    return "Eastern Canada";
+  },
+  "BRAZIL": (lon, lat) => {
+    if (lat > -15) return "Brazil North";
+    return "Brazil South";
+  },
+  "CHINA": (lon, lat) => {
+    if (lat > 35) return "China North";
+    return "China South";
+  },
+  "RUSSIA": (lon, lat) => {
+    if (lon < 50) return "Western Russia";
+    if (lon < 80) return "Siberia West";
+    if (lon < 110) return "Siberia Central";
+    if (lon < 150) return "Siberia East";
+    return "Kamchatka";
+  },
+  "AUSTRALIA": (lon, lat) => {
+    if (lon < 132) return "Western Australia";
+    return "Eastern Australia";
+  },
+};
+
+// Territory label positions [lon, lat]
+const TERR_LABEL_POS = {
+  "Alaska": [-153, 64],
+  "Western Canada": [-120, 58],
+  "Eastern Canada": [-75, 58],
+  "Quebec": [-72, 48],
+  "Pacific Northwest": [-118, 44],
+  "Great Plains": [-100, 42],
+  "Eastern USA": [-80, 40],
+  "Southern USA": [-88, 32],
+  "Mexico": [-102, 24],
+  "Central America": [-85, 12],
+  "Venezuela & Colombia": [-70, 6],
+  "Brazil North": [-50, -5],
+  "Brazil South": [-50, -22],
+  "Peru & Bolivia": [-68, -15],
+  "Argentina & Chile": [-65, -35],
+  "Iceland": [-18, 65],
+  "British Isles": [-3, 54],
+  "Scandinavia": [15, 63],
+  "Western Europe": [5, 47],
+  "Central Europe": [13, 50],
+  "Southern Europe": [15, 41],
+  "Eastern Europe": [22, 52],
+  "Ukraine & Caucasus": [32, 48],
+  "North Africa": [15, 25],
+  "West Africa": [-5, 10],
+  "Central Africa": [22, 2],
+  "East Africa": [38, 2],
+  "South Africa": [25, -28],
+  "Madagascar": [47, -20],
+  "Turkey & Levant": [35, 37],
+  "Arabian Peninsula": [45, 22],
+  "Iran & Iraq": [50, 32],
+  "Central Asia": [63, 45],
+  "Afghanistan & Pakistan": [66, 32],
+  "India": [78, 22],
+  "Sri Lanka & South India": [80, 9],
+  "Indochina": [105, 15],
+  "Southeast Asia Mainland": [95, 20],
+  "Indonesia & Malaysia": [112, 0],
+  "Philippines": [122, 13],
+  "China South": [110, 28],
+  "China North": [105, 42],
+  "Manchuria & Korea": [127, 40],
+  "Japan": [136, 36],
+  "Taiwan": [121, 24],
+  "Mongolia & Siberia East": [105, 48],
+  "Western Russia": [40, 58],
+  "Siberia West": [65, 58],
+  "Siberia Central": [90, 60],
+  "Siberia East": [120, 62],
+  "Kamchatka": [160, 58],
+  "Western Australia": [122, -26],
+  "Eastern Australia": [143, -28],
+  "New Zealand & Pacific": [172, -40],
+};
+
+// Adjacency for connection lines
 const ADJACENCIES_JS = {
   "Alaska":["Western Canada","Pacific Northwest","Kamchatka"],
   "Western Canada":["Alaska","Pacific Northwest","Great Plains","Eastern Canada"],
@@ -237,105 +401,267 @@ const TERR_CONT = {
   "Western Australia":"Oceania","Eastern Australia":"Oceania","New Zealand & Pacific":"Oceania"
 };
 
-// ===== VORONOI POLYGON BUILDER =====
-function buildPolygons() {
-  const names = Object.keys(POSITIONS);
-  const W=1100, H=580, STEP=5;
-  const cells = {};
-  names.forEach(n => cells[n] = []);
-  for (let x=2; x<W; x+=STEP) {
-    for (let y=2; y<H; y+=STEP) {
-      let nearest=null, minD=Infinity;
-      for (const n of names) {
-        const [tx,ty]=POSITIONS[n], d=(x-tx)**2+(y-ty)**2;
-        if (d<minD){minD=d;nearest=n;}
-      }
-      if (nearest) cells[nearest].push([x,y]);
-    }
-  }
-  const polys = {};
-  for (const n of names) polys[n] = convexHull(cells[n]);
-  return polys;
-}
+function hexRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
+function darken(hex,f){return `rgb(${Math.round(parseInt(hex.slice(1,3),16)*f)},${Math.round(parseInt(hex.slice(3,5),16)*f)},${Math.round(parseInt(hex.slice(5,7),16)*f)})`;}
 
-function convexHull(pts) {
-  if (pts.length<3) return pts;
-  const s=[...pts].sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
-  const cross=(O,A,B)=>(A[0]-O[0])*(B[1]-O[1])-(A[1]-O[1])*(B[0]-O[0]);
-  const lo=[];
-  for(const p of s){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
-  const hi=[];
-  for(let i=s.length-1;i>=0;i--){const p=s[i];while(hi.length>=2&&cross(hi[hi.length-2],hi[hi.length-1],p)<=0)hi.pop();hi.push(p);}
-  hi.pop();lo.pop();
-  return lo.concat(hi);
-}
-
-function pts2path(pts) {
-  if(!pts||pts.length===0) return '';
-  return pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+' Z';
-}
-
-function hexRgba(hex,a){
-  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-function darken(hex,f){
-  return `rgb(${Math.round(parseInt(hex.slice(1,3),16)*f)},${Math.round(parseInt(hex.slice(3,5),16)*f)},${Math.round(parseInt(hex.slice(5,7),16)*f)})`;
-}
-
-// ===== STATE =====
+// =====================================================================
+// GAME STATE
+// =====================================================================
 let state=null, selectedTerritory=null, attackFrom=null, reinforcementsLeft=0, selectedCards=[];
-let POLYS=null;
+let projection=null, pathGen=null, svgEl=null;
+// Map from territory name -> merged GeoJSON feature
+let terrFeatures = {};
+// Map from territory name -> projected centroid [x,y]
+let terrCentroids = {};
 
+// =====================================================================
+// INIT
+// =====================================================================
 async function init() {
-  POLYS = buildPolygons();
-  await loadState();
-  buildConnections();
+  const [worldData, gameState] = await Promise.all([
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r=>r.json()),
+    fetch('/api/state').then(r => {
+      if(r.status===404){window.location.href='/';return null;}
+      return r.json();
+    })
+  ]);
+  if(!gameState) return;
+  state = gameState;
+  reinforcementsLeft = state.reinforcements_available || 0;
+
+  buildMap(worldData);
+  document.getElementById('map-loading').style.display = 'none';
   render();
 }
 
-async function loadState() {
-  const res=await fetch('/api/state');
-  if(res.status===404){window.location.href='/';return;}
-  state=await res.json();
-  reinforcementsLeft=state.reinforcements_available||0;
-}
+// =====================================================================
+// MAP BUILDING WITH D3 + TopoJSON
+// =====================================================================
+function buildMap(world) {
+  const mapArea = document.getElementById('map-area');
+  const W = mapArea.clientWidth, H = mapArea.clientHeight;
 
-function buildConnections() {
-  const layer=document.getElementById('connections-layer');
-  layer.innerHTML='';
-  const drawn=new Set();
-  for(const [t,nbrs] of Object.entries(ADJACENCIES_JS)) {
-    for(const n of nbrs){
-      const key=[t,n].sort().join('||');
-      if(drawn.has(key)||!POSITIONS[n])continue;
-      drawn.add(key);
-      const [x1,y1]=POSITIONS[t],[x2,y2]=POSITIONS[n];
-      if(Math.sqrt((x2-x1)**2+(y2-y1)**2)>430)continue;
-      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-      l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
-      l.setAttribute('class','connection-line');
-      layer.appendChild(l);
+  // Create SVG
+  const svg = d3.select('#map-area').append('svg')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+  svgEl = svg;
+
+  // Natural Earth projection — looks great for a world Risk map
+  projection = d3.geoNaturalEarth1()
+    .scale(W / 6.3)
+    .translate([W / 2, H / 2]);
+
+  pathGen = d3.geoPath().projection(projection);
+
+  // Ocean background
+  svg.append('path')
+    .datum({type:'Sphere'})
+    .attr('class','sphere-bg')
+    .attr('d', pathGen);
+
+  // Graticule (lat/lon lines)
+  const graticule = d3.geoGraticule().step([20, 20]);
+  svg.append('path')
+    .datum(graticule())
+    .attr('class','graticule')
+    .attr('d', pathGen);
+
+  // Convert TopoJSON -> GeoJSON features (individual countries)
+  const countries = topojson.feature(world, world.objects.countries);
+
+  // Group countries into territories
+  const terrGroups = {}; // territory -> [GeoJSON features]
+  for(const feature of countries.features) {
+    const id = parseInt(feature.id);
+    const direct = COUNTRY_TO_TERRITORY[id];
+    if(!direct) continue;
+
+    if(SPLIT_RULES[direct]) {
+      // Need to split this country by geometry
+      const splitResult = splitCountryFeature(feature, SPLIT_RULES[direct]);
+      for(const [terrName, subFeature] of Object.entries(splitResult)) {
+        if(!terrGroups[terrName]) terrGroups[terrName] = [];
+        terrGroups[terrName].push(subFeature);
+      }
+    } else {
+      if(!terrGroups[direct]) terrGroups[direct] = [];
+      terrGroups[direct].push(feature);
     }
   }
-  // Alaska-Kamchatka wrap
-  const p=document.createElementNS('http://www.w3.org/2000/svg','path');
-  p.setAttribute('d','M 55 85 C 55 22, 960 22, 960 100');
-  p.setAttribute('stroke','rgba(255,255,255,0.07)');p.setAttribute('stroke-width','1');
-  p.setAttribute('stroke-dasharray','5,4');p.setAttribute('fill','none');
-  layer.appendChild(p);
+
+  // Merge features per territory and compute paths
+  const layers = {
+    tint: svg.append('g').attr('id','layer-tint'),
+    fill: svg.append('g').attr('id','layer-fill'),
+    border: svg.append('g').attr('id','layer-border'),
+    conn: svg.append('g').attr('id','layer-conn'),
+    label: svg.append('g').attr('id','layer-label'),
+    army: svg.append('g').attr('id','layer-army'),
+    hl: svg.append('g').attr('id','layer-hl'),
+  };
+
+  for(const [terrName, features] of Object.entries(terrGroups)) {
+    // Merge all country geometries for this territory
+    let merged;
+    try {
+      if(features.length === 1) {
+        merged = features[0];
+      } else {
+        // Use topojson merge approach via d3 union
+        merged = {
+          type: 'Feature',
+          geometry: {
+            type: 'GeometryCollection',
+            geometries: features.map(f => f.geometry).filter(Boolean)
+          },
+          properties: {name: terrName}
+        };
+        // Actually merge to single polygon
+        merged = mergeFeatures(features);
+      }
+    } catch(e) {
+      merged = features[0];
+    }
+    terrFeatures[terrName] = merged;
+
+    // Compute label centroid from TERR_LABEL_POS or feature centroid
+    const labelPos = TERR_LABEL_POS[terrName];
+    if(labelPos) {
+      const [px, py] = projection(labelPos);
+      terrCentroids[terrName] = [px, py];
+    } else {
+      try {
+        const c = pathGen.centroid(merged);
+        terrCentroids[terrName] = c;
+      } catch(e) {
+        terrCentroids[terrName] = [0,0];
+      }
+    }
+
+    // Draw continent tint
+    layers.tint.append('path')
+      .datum(merged)
+      .attr('d', pathGen)
+      .attr('fill', hexRgba(CONT_COLORS[TERR_CONT[terrName]]||'#666', 0.15))
+      .attr('stroke', 'none');
+
+    // Draw fill (updated dynamically)
+    layers.fill.append('path')
+      .datum(merged)
+      .attr('d', pathGen)
+      .attr('class', 'territory-path')
+      .attr('data-terr', terrName)
+      .attr('fill', 'rgba(50,50,70,0.3)')
+      .attr('stroke', 'none')
+      .on('click', () => handleClick(terrName))
+      .on('mouseenter', (e) => showTT(e, terrName))
+      .on('mousemove', (e) => moveTT(e))
+      .on('mouseleave', hideTT);
+
+    // Draw border
+    layers.border.append('path')
+      .datum(merged)
+      .attr('d', pathGen)
+      .attr('class', 'territory-border')
+      .attr('data-terr-border', terrName)
+      .attr('stroke', 'rgba(0,0,0,0.55)')
+      .attr('stroke-width', 0.8);
+  }
+
+  // Draw connection lines
+  const drawn = new Set();
+  for(const [t, nbrs] of Object.entries(ADJACENCIES_JS)) {
+    for(const n of nbrs) {
+      const key = [t,n].sort().join('||');
+      if(drawn.has(key)) continue;
+      drawn.add(key);
+      const c1 = terrCentroids[t], c2 = terrCentroids[n];
+      if(!c1||!c2) continue;
+      const dx = Math.abs(c2[0]-c1[0]);
+      if(dx > W*0.6) continue; // skip wrap-around in main view
+      layers.conn.append('line')
+        .attr('class','conn-line')
+        .attr('x1',c1[0]).attr('y1',c1[1])
+        .attr('x2',c2[0]).attr('y2',c2[1]);
+    }
+  }
+
+  // Alaska-Kamchatka wrap arc
+  const c1 = terrCentroids['Alaska'], c2 = terrCentroids['Kamchatka'];
+  if(c1 && c2) {
+    layers.conn.append('path')
+      .attr('d', `M${c1[0]},${c1[1]} C ${c1[0]},${c1[1]-60} ${c2[0]},${c2[1]-60} ${c2[0]},${c2[1]}`)
+      .attr('stroke','rgba(255,255,255,0.1)')
+      .attr('stroke-width',1)
+      .attr('stroke-dasharray','4,3')
+      .attr('fill','none');
+  }
+
+  // Labels and army badges (populated in renderMap)
+  renderMap();
 }
 
+function mergeFeatures(features) {
+  if(features.length === 1) return features[0];
+  // Create a MultiPolygon from all features
+  const allPolygons = [];
+  for(const f of features) {
+    if(!f.geometry) continue;
+    if(f.geometry.type === 'Polygon') {
+      allPolygons.push(f.geometry.coordinates);
+    } else if(f.geometry.type === 'MultiPolygon') {
+      allPolygons.push(...f.geometry.coordinates);
+    }
+  }
+  return {
+    type: 'Feature',
+    geometry: { type: 'MultiPolygon', coordinates: allPolygons },
+    properties: {}
+  };
+}
+
+function splitCountryFeature(feature, splitFn) {
+  // Split a country's geometry into sub-features based on centroid lon/lat
+  const result = {};
+  const geom = feature.geometry;
+  if(!geom) return result;
+
+  const polygons = geom.type === 'Polygon'
+    ? [geom.coordinates]
+    : geom.coordinates;
+
+  for(const rings of polygons) {
+    // Find centroid of this polygon ring
+    const ring = rings[0];
+    let lonSum=0, latSum=0;
+    for(const [lon,lat] of ring) { lonSum+=lon; latSum+=lat; }
+    const lon = lonSum/ring.length;
+    const lat = latSum/ring.length;
+    const terrName = splitFn(lon, lat);
+    if(!result[terrName]) result[terrName] = {type:'Feature',geometry:{type:'MultiPolygon',coordinates:[]},properties:{}};
+    result[terrName].geometry.coordinates.push(rings);
+  }
+  return result;
+}
+
+// =====================================================================
+// RENDER
+// =====================================================================
 function render() {
-  if(!state)return;
-  const phases={reinforce:'REINFORCE',attack:'ATTACK',fortify:'FORTIFY'};
-  document.getElementById('phase-indicator').textContent=phases[state.phase]||state.phase.toUpperCase();
-  document.getElementById('turn-info').textContent=`Turn ${state.turn}`;
-  renderPlayers(); renderMap(); renderActions(); renderCards(); renderLog();
-  if(state.winner!==null&&state.winner!==undefined){
-    const w=state.players.find(p=>p.id===state.winner);
-    document.getElementById('overlay-title').textContent=w?.is_human?'🏆 Victory!':'💀 Defeated';
-    document.getElementById('overlay-msg').textContent=w?.is_human
+  if(!state) return;
+  const phases = {reinforce:'REINFORCE',attack:'ATTACK',fortify:'FORTIFY'};
+  document.getElementById('phase-indicator').textContent = phases[state.phase]||state.phase.toUpperCase();
+  document.getElementById('turn-info').textContent = `Turn ${state.turn}`;
+  renderPlayers();
+  if(svgEl) renderMap();
+  renderActions();
+  renderCards();
+  renderLog();
+  if(state.winner !== null && state.winner !== undefined) {
+    const w = state.players.find(p=>p.id===state.winner);
+    document.getElementById('overlay-title').textContent = w?.is_human?'🏆 Victory!':'💀 Defeated';
+    document.getElementById('overlay-msg').textContent = w?.is_human
       ?'You have conquered the world and stand as supreme ruler!'
       :`${w?.name} has conquered the world. Better luck next time.`;
     document.getElementById('overlay').classList.add('show');
@@ -343,171 +669,163 @@ function render() {
 }
 
 function renderPlayers() {
-  const list=document.getElementById('player-list');list.innerHTML='';
-  for(const p of state.players){
-    const d=document.createElement('div');
-    d.className='player-item'+(p.id===state.current_player?' current-player':'')+(p.eliminated?' eliminated':'');
-    d.innerHTML=`<div class="player-dot" style="background:${p.color}"></div><span>${p.is_human?'👤 ':'🤖 '}${p.name}</span><span class="player-stats">${p.territory_count}🗺 ${p.army_count}⚔</span>`;
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  for(const p of state.players) {
+    const d = document.createElement('div');
+    d.className = 'player-item'+(p.id===state.current_player?' current-player':'')+(p.eliminated?' eliminated':'');
+    d.innerHTML = `<div class="player-dot" style="background:${p.color}"></div><span>${p.is_human?'👤 ':'🤖 '}${p.name}</span><span class="player-stats">${p.territory_count}🗺 ${p.army_count}⚔</span>`;
     list.appendChild(d);
   }
 }
 
 function renderMap() {
-  ['shapes-layer','borders-layer','labels-layer','armies-layer','highlights-layer'].forEach(id=>{
-    document.getElementById(id).innerHTML='';
+  if(!svgEl||!state) return;
+  const human = state.players.find(p=>p.is_human);
+  const current = state.players.find(p=>p.id===state.current_player);
+  const humanTurn = current?.is_human;
+
+  // Update fills and borders
+  svgEl.selectAll('.territory-path').each(function() {
+    const name = this.getAttribute('data-terr');
+    if(!name||!state.territories[name]) return;
+    const data = state.territories[name];
+    const owner = state.players.find(p=>p.id===data.owner);
+    const cColor = CONT_COLORS[TERR_CONT[name]]||'#666';
+    const oColor = owner ? owner.color : cColor;
+    const isAtkable = attackFrom && ADJACENCIES_JS[attackFrom]?.includes(name)
+      && data.owner !== human?.id && humanTurn && state.phase==='attack';
+    const isSel = name===selectedTerritory;
+    const isAtkFrom = name===attackFrom;
+
+    d3.select(this)
+      .attr('fill', owner ? hexRgba(oColor, 0.65) : hexRgba(cColor, 0.12))
+      .classed('atk-pulse', isAtkable);
   });
-  const SL=document.getElementById('shapes-layer');
-  const BL=document.getElementById('borders-layer');
-  const LL=document.getElementById('labels-layer');
-  const AL=document.getElementById('armies-layer');
-  const HL=document.getElementById('highlights-layer');
 
-  const human=state.players.find(p=>p.is_human);
-  const current=state.players.find(p=>p.id===state.current_player);
-  const humanTurn=current?.is_human;
+  svgEl.selectAll('.territory-border').each(function() {
+    const name = this.getAttribute('data-terr-border');
+    if(!name||!state.territories[name]) return;
+    const isAtkable = attackFrom && ADJACENCIES_JS[attackFrom]?.includes(name)
+      && state.territories[name].owner !== human?.id && humanTurn && state.phase==='attack';
+    const isSel = name===selectedTerritory;
+    const isAtkFrom = name===attackFrom;
 
-  const svgNS='http://www.w3.org/2000/svg';
+    d3.select(this)
+      .attr('stroke', isSel||isAtkFrom ? '#FFD700' : isAtkable ? '#FF4444' : 'rgba(0,0,0,0.55)')
+      .attr('stroke-width', isSel||isAtkFrom ? 2.5 : isAtkable ? 2 : 0.8);
+  });
 
-  for(const [name,data] of Object.entries(state.territories)){
-    const pos=POSITIONS[name]; if(!pos)continue;
-    const [cx,cy]=pos;
-    const poly=POLYS[name]; if(!poly||poly.length<3)continue;
+  // Redraw labels & army badges
+  svgEl.select('#layer-label').selectAll('*').remove();
+  svgEl.select('#layer-army').selectAll('*').remove();
+  svgEl.select('#layer-hl').selectAll('*').remove();
 
-    const owner=state.players.find(p=>p.id===data.owner);
-    const cColor=CONT_COLORS[TERR_CONT[name]]||'#666';
-    const oColor=owner?owner.color:cColor;
-    const pathStr=pts2path(poly);
+  for(const [name, data] of Object.entries(state.territories)) {
+    const c = terrCentroids[name];
+    if(!c||isNaN(c[0])||isNaN(c[1])) continue;
+    const [cx, cy] = c;
+    const owner = state.players.find(p=>p.id===data.owner);
+    const oColor = owner ? owner.color : '#666';
 
-    const isSelected=name===selectedTerritory;
-    const isAtkFrom=name===attackFrom;
-    const isAtkable=attackFrom&&ADJACENCIES_JS[attackFrom]?.includes(name)&&data.owner!==human?.id&&humanTurn&&state.phase==='attack';
+    const isSel = name===selectedTerritory;
+    const isAtkFrom = name===attackFrom;
+    const isAtkable = attackFrom && ADJACENCIES_JS[attackFrom]?.includes(name)
+      && data.owner !== human?.id && humanTurn && state.phase==='attack';
 
-    // Continental tint underneath
-    const tint=document.createElementNS(svgNS,'path');
-    tint.setAttribute('d',pathStr);
-    tint.setAttribute('fill',hexRgba(cColor,0.18));
-    tint.setAttribute('stroke','none');
-    SL.appendChild(tint);
-
-    // Main fill
-    const fill=document.createElementNS(svgNS,'path');
-    fill.setAttribute('d',pathStr);
-    fill.setAttribute('fill',owner?hexRgba(oColor,0.60):hexRgba(cColor,0.12));
-    fill.setAttribute('stroke','none');
-    fill.setAttribute('class','terr-shape');
-    fill.style.cursor='pointer';
-    if(isAtkable) fill.style.animation='pulse-attack 1s infinite';
-    fill.addEventListener('click',()=>handleTerritoryClick(name));
-    fill.addEventListener('mouseenter',e=>showTooltip(e,name));
-    fill.addEventListener('mousemove',e=>moveTooltip(e));
-    fill.addEventListener('mouseleave',hideTooltip);
-    SL.appendChild(fill);
-
-    // Border outline — this is the key new element: clear visible territory boundary
-    const border=document.createElementNS(svgNS,'path');
-    border.setAttribute('d',pathStr);
-    border.setAttribute('fill','none');
-    // Different border styles: selected=gold, attackable=red, normal=semi-dark
-    if(isSelected||isAtkFrom){
-      border.setAttribute('stroke','#FFD700');
-      border.setAttribute('stroke-width','2.5');
-    } else if(isAtkable){
-      border.setAttribute('stroke','#FF5555');
-      border.setAttribute('stroke-width','2');
-    } else {
-      border.setAttribute('stroke','rgba(0,0,0,0.55)');
-      border.setAttribute('stroke-width','1.2');
-    }
-    border.setAttribute('stroke-linejoin','round');
-    border.style.pointerEvents='none';
-    BL.appendChild(border);
-
-    // Glow for selected/highlighted
-    if(isSelected||isAtkFrom||isAtkable){
-      const glow=document.createElementNS(svgNS,'path');
-      glow.setAttribute('d',pathStr);
-      glow.setAttribute('fill','none');
-      glow.setAttribute('stroke',isAtkable?'rgba(255,80,80,0.5)':'rgba(255,215,0,0.4)');
-      glow.setAttribute('stroke-width','6');
-      glow.setAttribute('stroke-linejoin','round');
-      glow.setAttribute('filter','url(#glow)');
-      glow.style.pointerEvents='none';
-      HL.appendChild(glow);
+    // Glow highlight
+    if(isSel||isAtkFrom||isAtkable) {
+      const feat = terrFeatures[name];
+      if(feat) {
+        svgEl.select('#layer-hl').append('path')
+          .datum(feat)
+          .attr('d', pathGen)
+          .attr('fill', 'none')
+          .attr('stroke', isAtkable?'rgba(255,60,60,0.6)':'rgba(255,215,0,0.5)')
+          .attr('stroke-width', 5)
+          .attr('stroke-linejoin','round')
+          .attr('filter','drop-shadow(0 0 6px '+(isAtkable?'#ff4444':'#ffd700')+')')
+          .style('pointer-events','none');
+      }
     }
 
-    // Territory name label — split into lines if needed
-    const words=name.split(' ');
-    const mid=Math.ceil(words.length/2);
-    const l1=words.slice(0,mid).join(' ');
-    const l2=words.slice(mid).join(' ');
-    const nameOffsetY = l2 ? -7 : -4;
-    const armyY = l2 ? cy+18 : cy+11;
+    // Territory name — split across 2 lines if needed
+    const words = name.split(' ');
+    const mid = Math.ceil(words.length/2);
+    const line1 = words.slice(0,mid).join(' ');
+    const line2 = words.slice(mid).join(' ');
+    const hasTwo = line2.length > 0;
+    const nameY = hasTwo ? cy - 7 : cy - 5;
+    const armyY = hasTwo ? cy + 16 : cy + 10;
 
-    if(l2){
-      [l1,l2].forEach((line,i)=>{
-        const t=document.createElementNS(svgNS,'text');
-        t.setAttribute('x',cx); t.setAttribute('y',cy+nameOffsetY+i*10);
-        t.setAttribute('class','terr-name-label');
-        t.setAttribute('filter','url(#txtshadow)');
-        t.textContent=line;
-        LL.appendChild(t);
-      });
-    } else {
-      const t=document.createElementNS(svgNS,'text');
-      t.setAttribute('x',cx); t.setAttribute('y',cy+nameOffsetY);
-      t.setAttribute('class','terr-name-label');
-      t.setAttribute('filter','url(#txtshadow)');
-      t.textContent=name;
-      LL.appendChild(t);
+    const labelGroup = svgEl.select('#layer-label').append('g');
+    function addLabel(txt, y, sz) {
+      labelGroup.append('text')
+        .attr('x', cx).attr('y', y)
+        .attr('class','terr-label')
+        .attr('font-size', sz||7)
+        .attr('filter','drop-shadow(0 0 2px rgba(0,0,0,1))')
+        .text(txt);
     }
+    addLabel(line1, nameY);
+    if(hasTwo) addLabel(line2, nameY+9);
 
-    // Army count badge
-    const badgeBg=document.createElementNS(svgNS,'circle');
-    badgeBg.setAttribute('cx',cx);badgeBg.setAttribute('cy',armyY);badgeBg.setAttribute('r','9');
-    badgeBg.setAttribute('fill',owner?darken(oColor,0.40):'rgba(0,0,0,0.65)');
-    badgeBg.setAttribute('stroke',owner?hexRgba(oColor,0.9):'rgba(255,255,255,0.25)');
-    badgeBg.setAttribute('stroke-width','1.5');
-    badgeBg.style.pointerEvents='none';
-    AL.appendChild(badgeBg);
+    // Army badge
+    const armyGroup = svgEl.select('#layer-army').append('g');
+    armyGroup.append('circle')
+      .attr('cx',cx).attr('cy',armyY).attr('r',9)
+      .attr('fill', owner ? darken(oColor, 0.4) : 'rgba(0,0,0,0.7)')
+      .attr('stroke', owner ? hexRgba(oColor, 0.9) : 'rgba(255,255,255,0.2)')
+      .attr('stroke-width', 1.5)
+      .style('pointer-events','none');
 
-    const armyTxt=document.createElementNS(svgNS,'text');
-    armyTxt.setAttribute('x',cx);armyTxt.setAttribute('y',armyY);
-    armyTxt.setAttribute('class','terr-army-label');
-    armyTxt.textContent=data.armies;
-    AL.appendChild(armyTxt);
+    armyGroup.append('text')
+      .attr('x',cx).attr('y',armyY)
+      .attr('class','army-badge-txt')
+      .attr('font-size', 10)
+      .text(data.armies);
   }
 }
 
-function handleTerritoryClick(name){
-  const data=state.territories[name];
-  const human=state.players.find(p=>p.is_human);
-  const current=state.players.find(p=>p.id===state.current_player);
-  const humanTurn=current?.is_human;
-  selectedTerritory=name;
-  updateTerritoryInfo(name);
+// =====================================================================
+// INTERACTIONS
+// =====================================================================
+function handleClick(name) {
+  const data = state.territories[name];
+  if(!data) return;
+  const human = state.players.find(p=>p.is_human);
+  const current = state.players.find(p=>p.id===state.current_player);
+  const humanTurn = current?.is_human;
+  selectedTerritory = name;
+  updateTerrInfo(name);
   if(!humanTurn){renderMap();return;}
   if(state.phase==='reinforce'){
-    if(data.owner===human?.id)renderActions();
+    if(data.owner===human?.id) renderActions();
   } else if(state.phase==='attack'){
-    if(data.owner===human?.id&&data.armies>=2){
-      attackFrom=name;showMsg(`Selected ${name} as attacker. Click an adjacent enemy.`);
-    } else if(attackFrom&&ADJACENCIES_JS[attackFrom]?.includes(name)&&data.owner!==human?.id){
-      doAttack(attackFrom,name);return;
-    } else if(data.owner!==human?.id){showMsg('Select one of your territories with 2+ armies first.');}
+    if(data.owner===human?.id && data.armies>=2){
+      attackFrom=name; showMsg(`Selected ${name}. Click an adjacent enemy to attack.`);
+    } else if(attackFrom && ADJACENCIES_JS[attackFrom]?.includes(name) && data.owner!==human?.id){
+      doAttack(attackFrom,name); return;
+    } else if(data.owner!==human?.id){
+      showMsg('Select one of your territories with 2+ armies first.');
+    }
   } else if(state.phase==='fortify'){
     if(data.owner===human?.id){
-      if(!attackFrom||attackFrom===name){attackFrom=name;showMsg(`Selected ${name}. Click another territory to fortify.`);renderActions();}
-      else{renderFortifyAction(attackFrom,name);return;}
+      if(!attackFrom||attackFrom===name){
+        attackFrom=name; showMsg(`Selected ${name}. Click another territory to fortify.`); renderActions();
+      } else {
+        renderFortifyUI(attackFrom, name); return;
+      }
     }
   }
   renderMap();
 }
 
-function updateTerritoryInfo(name){
-  const data=state.territories[name];
-  const owner=state.players.find(p=>p.id===data.owner);
-  const adjs=(ADJACENCIES_JS[name]||[]).map(n=>{
-    const t=state.territories[n],o=state.players.find(p=>p.id===t?.owner);
+function updateTerrInfo(name) {
+  const data = state.territories[name];
+  const owner = state.players.find(p=>p.id===data.owner);
+  const adjs = (ADJACENCIES_JS[name]||[]).map(n=>{
+    const t=state.territories[n], o=state.players.find(p=>p.id===t?.owner);
     return `<span style="color:${o?.color||'#888'}">${n}</span>`;
   }).join(', ');
   document.getElementById('territory-info').innerHTML=`
@@ -518,12 +836,12 @@ function updateTerritoryInfo(name){
     <div class="terr-detail" style="font-size:0.73rem;margin-top:0.3rem">Borders: ${adjs}</div>`;
 }
 
-function renderActions(){
-  const ac=document.getElementById('action-content');
-  const human=state.players.find(p=>p.is_human);
-  const current=state.players.find(p=>p.id===state.current_player);
+function renderActions() {
+  const ac = document.getElementById('action-content');
+  const human = state.players.find(p=>p.is_human);
+  const current = state.players.find(p=>p.id===state.current_player);
   if(!current?.is_human){
-    ac.innerHTML=`<div style="color:var(--text-dim);font-size:0.82rem;text-align:center;margin-top:1rem"><div style="font-size:1.2rem;margin-bottom:0.5rem">🤖</div>${current?.name} is taking their turn...</div>`;
+    ac.innerHTML=`<div style="color:var(--text-dim);text-align:center;margin-top:1rem"><div style="font-size:1.2rem;margin-bottom:0.5rem">🤖</div>${current?.name} is taking their turn...</div>`;
     return;
   }
   if(state.phase==='reinforce'){
@@ -537,7 +855,7 @@ function renderActions(){
       :`<div style="color:var(--text-dim);font-size:0.8rem;font-style:italic">Click one of your territories to reinforce it.</div>`}`;
   } else if(state.phase==='attack'){
     ac.innerHTML=`<div class="action-title">Attack Phase</div>
-      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.6rem">${attackFrom?`Attacking from: <span style="color:var(--gold)">${attackFrom}</span> (${state.territories[attackFrom]?.armies} armies)`:'Select your territory, then click an enemy.'}</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.6rem">${attackFrom?`Attacking from: <span style="color:var(--gold)">${attackFrom}</span>`:'Select your territory, then click an enemy.'}</div>
       ${attackFrom?`<div class="slider-group" style="margin-bottom:0.5rem"><label style="font-size:0.78rem;color:var(--text-dim);width:60px">Dice:</label>
         <input type="range" id="dice-slider" min="1" max="${Math.min(3,(state.territories[attackFrom]?.armies||1)-1)}" value="${Math.min(3,(state.territories[attackFrom]?.armies||1)-1)}" oninput="document.getElementById('dice-val').textContent=this.value">
         <span class="slider-val" id="dice-val">${Math.min(3,(state.territories[attackFrom]?.armies||1)-1)}</span></div>
@@ -545,16 +863,15 @@ function renderActions(){
       <button class="btn primary" style="margin-top:0.5rem" onclick="doEndAttack()">End Attacks →</button>`;
   } else if(state.phase==='fortify'){
     ac.innerHTML=`<div class="action-title">Fortify Phase</div>
-      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.6rem">Move armies between connected territories you own.</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.6rem">Move armies between your connected territories.</div>
       <div style="font-size:0.78rem;color:var(--text-dim)">${attackFrom?`From: <span style="color:var(--gold)">${attackFrom}</span> — Click another territory.`:'Click one of your territories to start.'}</div>
       <button class="btn success" style="margin-top:0.8rem" onclick="doSkipFortify()">Skip Fortify →</button>`;
   }
 }
 
-function renderFortifyAction(from,to){
-  const ac=document.getElementById('action-content');
+function renderFortifyUI(from,to){
   const max=(state.territories[from]?.armies||2)-1;
-  ac.innerHTML=`<div class="action-title">Fortify</div>
+  document.getElementById('action-content').innerHTML=`<div class="action-title">Fortify</div>
     <div style="font-size:0.82rem;margin-bottom:0.5rem;color:var(--text-dim)"><span style="color:var(--gold)">${from}</span> → <span style="color:#99ff99">${to}</span></div>
     <div class="slider-group"><input type="range" id="fort-slider" min="1" max="${max}" value="${Math.min(max,Math.floor(max/2)+1)}" oninput="document.getElementById('fort-val').textContent=this.value">
     <span class="slider-val" id="fort-val">${Math.min(max,Math.floor(max/2)+1)}</span></div>
@@ -562,7 +879,7 @@ function renderFortifyAction(from,to){
     <button class="btn" style="margin-top:0.3rem" onclick="attackFrom=null;selectedTerritory=null;renderActions();renderMap()">Cancel</button>`;
 }
 
-function renderCards(){
+function renderCards() {
   const human=state.players.find(p=>p.is_human);if(!human)return;
   document.getElementById('card-count').textContent=human.cards.length;
   const area=document.getElementById('cards-area');area.innerHTML='';selectedCards=[];
@@ -594,6 +911,9 @@ function renderLog(){
   log.scrollTop=log.scrollHeight;
 }
 
+// =====================================================================
+// API ACTIONS
+// =====================================================================
 async function doReinforce(territory){
   const armies=parseInt(document.getElementById('reinf-slider')?.value||1);
   if(armies>reinforcementsLeft){showMsg('Not enough armies!');return;}
@@ -615,8 +935,8 @@ async function doAttack(from,to){
 
 function showDiceResult(data){
   document.getElementById('dice-section').style.display='block';
-  const result=document.getElementById('dice-result');result.style.display='block';
-  result.innerHTML=`<div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.3rem">${data.from} → ${data.to}</div>
+  const r=document.getElementById('dice-result');r.style.display='block';
+  r.innerHTML=`<div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.3rem">${data.from} → ${data.to}</div>
     <div style="display:flex;gap:1rem;justify-content:center;align-items:center">
       <div><div style="font-size:0.7rem;color:#ff8888;margin-bottom:0.2rem">ATTACK</div><div class="dice-row">${data.atk_rolls.map(r=>`<div class="die atk">${r}</div>`).join('')}</div></div>
       <div style="color:var(--gold);font-size:1.2rem">VS</div>
@@ -645,22 +965,25 @@ async function doSkipFortify(){
   attackFrom=null;selectedTerritory=null;state=data.state;reinforcementsLeft=state.reinforcements_available||0;render();
 }
 
-function showTooltip(e,name){
+function showTT(e,name){
   const data=state?.territories[name];if(!data)return;
   const owner=state.players.find(p=>p.id===data.owner);
   document.getElementById('tt-name').textContent=name;
   document.getElementById('tt-info').innerHTML=`<span style="color:${owner?.color}">${owner?.name||'Unclaimed'}</span> | ${data.armies} armies`;
-  document.getElementById('tooltip').style.display='block';moveTooltip(e);
+  document.getElementById('tooltip').style.display='block';moveTT(e);
 }
-function moveTooltip(e){const tt=document.getElementById('tooltip');tt.style.left=(e.clientX+12)+'px';tt.style.top=(e.clientY-30)+'px';}
-function hideTooltip(){document.getElementById('tooltip').style.display='none';}
+function moveTT(e){const t=document.getElementById('tooltip');t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY-32)+'px';}
+function hideTT(){document.getElementById('tooltip').style.display='none';}
 
 let msgTimer;
-function showMsg(text){
-  const b=document.getElementById('msg-banner');b.textContent=text;b.style.display='block';
+function showMsg(t){
+  const b=document.getElementById('msg-banner');b.textContent=t;b.style.display='block';
   clearTimeout(msgTimer);msgTimer=setTimeout(()=>{b.style.display='none';},3000);
 }
 
+// =====================================================================
+// BOOT
+// =====================================================================
 init().then(()=>{
   if(!state)return;
   const list=document.getElementById('continent-list');
