@@ -29,25 +29,22 @@ class Player:
         }
 
 class Game:
-    CARD_SETS_TRADED = 0
-    CARD_VALUES = [4, 6, 8, 10, 12, 15]
-
     def __init__(self, num_ai_players):
         self.territories = {name: Territory(name) for name in ALL_TERRITORIES}
         self.players = []
         self.current_player_idx = 0
-        self.phase = "setup"  # setup, reinforce, attack, fortify
+        self.phase = "setup"
         self.turn_number = 0
         self.winner = None
         self.attack_log = []
         self.cards_traded_count = 0
-        self.pending_territory_bonus = 0  # armies gained from conquering this turn
         self.conquered_this_turn = False
+        # Track armies placed this turn so frontend knows how many remain
+        self._reinforce_pool = 0
         self._setup_players(num_ai_players)
         self._distribute_territories()
 
     def _setup_players(self, num_ai):
-        # Human player first
         human = Player(0, "You", PLAYER_COLORS[0], is_human=True)
         self.players.append(human)
         ai_names = random.sample(AI_NAMES, min(num_ai, len(AI_NAMES)))
@@ -59,7 +56,6 @@ class Game:
         terr_list = list(ALL_TERRITORIES)
         random.shuffle(terr_list)
         total_players = len(self.players)
-        # Starting armies based on player count
         starting_armies = max(20, 50 - (total_players * 5))
 
         for idx, name in enumerate(terr_list):
@@ -67,16 +63,17 @@ class Game:
             self.territories[name].owner = player.id
             self.territories[name].armies = 1
 
-        # Distribute remaining armies
         for player in self.players:
             my_terrs = [t for t in self.territories.values() if t.owner == player.id]
             extra = starting_armies - len(my_terrs)
-            for _ in range(extra):
+            for _ in range(max(0, extra)):
                 t = random.choice(my_terrs)
                 t.armies += 1
 
         self.phase = "reinforce"
         self.turn_number = 1
+        # Pre-calculate first human player's pool
+        self._reinforce_pool = self.calculate_reinforcements(0)
 
     def get_state(self):
         terr_data = {}
@@ -88,8 +85,6 @@ class Game:
             }
 
         player_data = [p.to_dict() for p in self.players]
-
-        # Count territories per player
         for p in player_data:
             p["territory_count"] = sum(1 for t in self.territories.values() if t.owner == p["id"])
             p["army_count"] = sum(t.armies for t in self.territories.values() if t.owner == p["id"])
@@ -106,12 +101,12 @@ class Game:
             "adjacencies": ADJACENCIES,
             "cards_traded_count": self.cards_traded_count,
             "conquered_this_turn": self.conquered_this_turn,
+            "reinforce_pool": self._reinforce_pool,
         }
 
     def calculate_reinforcements(self, player_id):
         my_terrs = [t for t in self.territories.values() if t.owner == player_id]
         armies = max(3, len(my_terrs) // 3)
-        # Continent bonuses
         for cont, data in CONTINENTS.items():
             if all(self.territories[t].owner == player_id for t in data["territories"]):
                 armies += data["bonus"]
@@ -126,9 +121,21 @@ class Game:
         if not t or t.owner != player_id:
             return {"error": "Invalid territory"}
 
+        # Clamp armies to what's actually available
+        available = self._reinforce_pool
+        if available <= 0:
+            return {"error": "No armies left to place"}
+        armies = max(1, min(armies, available))
+
         t.armies += armies
-        self.attack_log.append(f"{self.players[self.current_player_idx].name} reinforced {territory} with {armies} armies")
-        self.phase = "attack"
+        self._reinforce_pool -= armies
+        self.attack_log.append(f"You reinforced {territory} with {armies} armies")
+
+        # Only advance to attack once all armies are placed
+        if self._reinforce_pool <= 0:
+            self._reinforce_pool = 0
+            self.phase = "attack"
+
         return {"success": True}
 
     def attack(self, attacker_id, from_terr, to_terr, num_dice):
@@ -143,15 +150,14 @@ class Game:
         if not ft or not tt:
             return {"error": "Invalid territory"}
         if ft.owner != attacker_id:
-            return {"error": "You don't own attack territory"}
+            return {"error": "You don't own that territory"}
         if tt.owner == attacker_id:
-            return {"error": "Can't attack own territory"}
+            return {"error": "Can't attack your own territory"}
         if to_terr not in ADJACENCIES.get(from_terr, []):
             return {"error": "Territories not adjacent"}
         if ft.armies < 2:
             return {"error": "Need at least 2 armies to attack"}
 
-        # Cap dice
         atk_dice = min(num_dice, ft.armies - 1, 3)
         def_dice = min(2, tt.armies)
 
@@ -175,40 +181,32 @@ class Game:
             "atk_losses": atk_losses,
             "def_losses": def_losses,
             "conquered": False,
-            "attacker_name": self.players[self.current_player_idx].name,
             "from": from_terr,
             "to": to_terr,
         }
 
-        log_line = f"{self.players[self.current_player_idx].name} attacked {to_terr} from {from_terr}: [{','.join(map(str,atk_rolls))}] vs [{','.join(map(str,def_rolls))}]"
+        log_line = f"You attacked {to_terr} from {from_terr}: [{','.join(map(str,atk_rolls))}] vs [{','.join(map(str,def_rolls))}]"
 
         if tt.armies <= 0:
-            # Conquered!
             defender_id = tt.owner
             tt.owner = attacker_id
-            tt.armies = atk_dice - atk_losses  # move attacking dice worth of armies
-            if tt.armies < 1:
-                tt.armies = 1
+            tt.armies = max(1, atk_dice - atk_losses)
             result["conquered"] = True
             result["moved_armies"] = tt.armies
             self.conquered_this_turn = True
-            log_line += f" → CONQUERED!"
+            log_line += " → CONQUERED!"
 
-            # Give attacker a card
             card = random.choice(["infantry", "cavalry", "artillery", "wild"])
             self.players[self.current_player_idx].cards.append(card)
 
-            # Check elimination
             defender_terrs = [t for t in self.territories.values() if t.owner == defender_id]
             if not defender_terrs:
                 self.players[defender_id].eliminated = True
                 log_line += f" {self._player_name(defender_id)} eliminated!"
                 result["eliminated"] = self._player_name(defender_id)
-                # Winner takes their cards
                 self.players[self.current_player_idx].cards.extend(self.players[defender_id].cards)
                 self.players[defender_id].cards = []
 
-            # Check win condition
             active = [p for p in self.players if not p.eliminated]
             if len(active) == 1:
                 self.winner = active[0].id
@@ -221,6 +219,8 @@ class Game:
     def end_attack(self, player_id):
         if self.players[self.current_player_idx].id != player_id:
             return {"error": "Not your turn"}
+        if self.phase != "attack":
+            return {"error": "Not in attack phase"}
         self.phase = "fortify"
         return {"success": True}
 
@@ -238,13 +238,13 @@ class Game:
         if ft.owner != player_id or tt.owner != player_id:
             return {"error": "Must own both territories"}
         if ft.armies <= armies:
-            return {"error": "Not enough armies"}
+            return {"error": "Not enough armies (must leave at least 1)"}
         if not self._connected(from_terr, to_terr, player_id):
             return {"error": "Territories not connected through your own"}
 
         ft.armies -= armies
         tt.armies += armies
-        self.attack_log.append(f"{self.players[self.current_player_idx].name} fortified {to_terr} from {from_terr} with {armies}")
+        self.attack_log.append(f"You fortified {to_terr} from {from_terr} with {armies}")
         self._end_turn()
         return {"success": True}
 
@@ -255,25 +255,23 @@ class Game:
         return {"success": True}
 
     def trade_cards(self, player_id, card_indices):
+        if self.phase != "reinforce":
+            return {"error": "Can only trade cards during reinforce phase"}
+        if self.players[self.current_player_idx].id != player_id:
+            return {"error": "Not your turn"}
         player = self.players[player_id]
         if len(card_indices) != 3:
             return {"error": "Must trade exactly 3 cards"}
+        if max(card_indices) >= len(player.cards):
+            return {"error": "Invalid card index"}
 
-        cards = [player.cards[i] for i in sorted(card_indices, reverse=True)]
-        # Validate set: all same or all different or has wild
+        cards = [player.cards[i] for i in card_indices]
         types = set(c for c in cards if c != "wild")
         wilds = sum(1 for c in cards if c == "wild")
 
-        valid = False
-        if wilds >= 1:
-            valid = True
-        elif len(types) == 3:  # all different
-            valid = True
-        elif len(types) == 1:  # all same
-            valid = True
-
+        valid = wilds >= 1 or len(types) == 3 or len(types) == 1
         if not valid:
-            return {"error": "Invalid card combination"}
+            return {"error": "Invalid card combination — need all same, all different, or include a wild"}
 
         for i in sorted(card_indices, reverse=True):
             player.cards.pop(i)
@@ -285,29 +283,36 @@ class Game:
         else:
             bonus = 15 + (n - 6) * 5
 
+        self._reinforce_pool += bonus
         return {"success": True, "bonus_armies": bonus}
 
     def _end_turn(self):
         active = [p for p in self.players if not p.eliminated]
-        idx_in_active = next(i for i, p in enumerate(active) if p.id == self.players[self.current_player_idx].id)
-        next_active = active[(idx_in_active + 1) % len(active)]
-        self.current_player_idx = next_active.id
+        if not active:
+            return
+        # Find index of current player in active list
+        curr_id = self.players[self.current_player_idx].id
+        idx_in_active = next((i for i, p in enumerate(active) if p.id == curr_id), 0)
+        next_player = active[(idx_in_active + 1) % len(active)]
+        self.current_player_idx = next_player.id
         self.phase = "reinforce"
         self.conquered_this_turn = False
         self.turn_number += 1
+        # Calculate reinforcement pool for next player
+        self._reinforce_pool = self.calculate_reinforcements(next_player.id)
 
-        # If next player is AI, do AI turn
-        if not next_active.is_human and not self.winner:
-            self._do_ai_turn(next_active)
+        # If next player is AI, handle their full turn
+        if not next_player.is_human and not self.winner:
+            self._do_ai_turn(next_player)
 
     def _do_ai_turn(self, player):
-        # AI Reinforce
         reinforce_count = self.calculate_reinforcements(player.id)
         my_terrs = [t for t in self.territories.values() if t.owner == player.id]
         if not my_terrs:
+            self._end_turn()
             return
 
-        # Reinforce territory with most neighbors
+        # Reinforce the territory with the most enemy neighbours
         best = max(my_terrs, key=lambda t: len([
             n for n in ADJACENCIES.get(t.name, [])
             if self.territories[n].owner != player.id
@@ -316,7 +321,7 @@ class Game:
         self.attack_log.append(f"{player.name} reinforced {best.name} with {reinforce_count}")
         self.phase = "attack"
 
-        # AI Attack
+        # Attack up to 10 times
         for _ in range(random.randint(3, 10)):
             my_terrs = [t for t in self.territories.values() if t.owner == player.id and t.armies >= 2]
             if not my_terrs:
@@ -330,13 +335,11 @@ class Game:
                 continue
             target = min(neighbors, key=lambda t: t.armies)
             if attacker.armies > target.armies + 1:
-                result = self.attack(player.id, attacker.name, target.name, 3)
+                self.attack(player.id, attacker.name, target.name, 3)
                 if self.winner:
                     return
 
         self.phase = "fortify"
-
-        # AI Fortify - simple: move armies toward frontier
         self._end_turn()
 
     def _connected(self, from_t, to_t, player_id):
