@@ -196,27 +196,41 @@ const C2T = {
 // Split rules for countries that span multiple territories
 const SPLIT = {
   USA:(lon,lat)=>{
-    if(lon<-141)return"Alaska";
-    if(lat<31)return"Southern USA";
-    if(lon<-100)return"Pacific NW";
+    // Alaska is a separate entry in C2T, but handle stray polygons
+    if(lon<-141||lon>140)return"Alaska";
+    if(lat<31.5)return"Southern USA";
+    if(lon<-104)return"Pacific NW";
     if(lon<-90)return"Great Plains";
     return"Eastern USA";
   },
   CANADA:(lon,lat)=>{
+    // Western Canada: BC, Alberta, Saskatchewan, Manitoba, Yukon, NWT
     if(lon<-95)return"Western Canada";
-    if(lon>-79&&lat>46)return"Quebec";
+    // Quebec province: roughly lon -57 to -79, lat 45-62
+    // Exclude Arctic islands (lat > 62) which belong to Eastern Canada
+    if(lon>-80&&lon<-56&&lat>44&&lat<62)return"Quebec";
+    // Everything else (Ontario, Nunavut, Baffin Island, Labrador, Maritimes, Newfoundland)
     return"Eastern Canada";
   },
-  BRAZIL:(lon,lat)=>lat>-15?"Brazil North":"Brazil South",
-  CHINA:(lon,lat)=>lat>35?"China N":"China S",
+  BRAZIL:(lon,lat)=>lat>-14?"Brazil North":"Brazil South",
+  CHINA:(lon,lat)=>{
+    // China N: north of Yangtze roughly (32N), includes Inner Mongolia, NE provinces
+    if(lat>32)return"China N";
+    return"China S";
+  },
   RUSSIA:(lon,lat)=>{
-    if(lon<50)return"W. Russia";
-    if(lon<80)return"Siberia W";
-    if(lon<110)return"Siberia C";
-    if(lon<150)return"Siberia E";
+    // W. Russia: European Russia west of Urals (~60E)
+    if(lon<58)return"W. Russia";
+    // Siberia W: West Siberian Plain (~58-85E)
+    if(lon<85)return"Siberia W";
+    // Siberia C: Central Siberia (~85-115E)
+    if(lon<115)return"Siberia C";
+    // Siberia E: Eastern Siberia and Far East (~115-155E)
+    if(lon<155)return"Siberia E";
+    // Kamchatka Peninsula: east of 155E
     return"Kamchatka";
   },
-  AUSTRALIA:(lon,lat)=>lon<132?"W. Australia":"E. Australia",
+  AUSTRALIA:(lon,lat)=>lon<134?"W. Australia":"E. Australia",
 };
 
 // Label lon/lat positions
