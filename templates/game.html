@@ -196,120 +196,116 @@ const C2T = {
 // Split rules for countries that span multiple territories
 const SPLIT = {
   USA:(lon,lat)=>{
-    // Alaska is a separate entry in C2T, but handle stray polygons
-    if(lon<-141||lon>140)return"Alaska";
+    if(lon<-130||lon>165)return"Alaska";
+    if(lat<25)return"Pacific NW";
     if(lat<31.5)return"Southern USA";
     if(lon<-104)return"Pacific NW";
     if(lon<-90)return"Great Plains";
     return"Eastern USA";
   },
   CANADA:(lon,lat)=>{
-    // Western Canada: BC, Alberta, Saskatchewan, Manitoba, Yukon, NWT
     if(lon<-95)return"Western Canada";
-    // Quebec province: roughly lon -57 to -79, lat 45-62
-    // Exclude Arctic islands (lat > 62) which belong to Eastern Canada
-    if(lon>-80&&lon<-56&&lat>44&&lat<62)return"Quebec";
-    // Everything else (Ontario, Nunavut, Baffin Island, Labrador, Maritimes, Newfoundland)
+    if(lon>-79&&lon<-65&&lat>44&&lat<62)return"Quebec";
     return"Eastern Canada";
   },
   BRAZIL:(lon,lat)=>lat>-14?"Brazil North":"Brazil South",
-  CHINA:(lon,lat)=>{
-    // China N: north of Yangtze roughly (32N), includes Inner Mongolia, NE provinces
-    if(lat>32)return"China N";
-    return"China S";
-  },
+  CHINA:(lon,lat)=>lat>32?"China N":"China S",
   RUSSIA:(lon,lat)=>{
-    // W. Russia: European Russia west of Urals (~60E)
-    if(lon<58)return"W. Russia";
-    // Siberia W: West Siberian Plain (~58-85E)
+    if(lon<60)return"W. Russia";
     if(lon<85)return"Siberia W";
-    // Siberia C: Central Siberia (~85-115E)
-    if(lon<115)return"Siberia C";
-    // Siberia E: Eastern Siberia and Far East (~115-155E)
-    if(lon<155)return"Siberia E";
-    // Kamchatka Peninsula: east of 155E
+    if(lon<118)return"Siberia C";
+    if(lon<158)return"Siberia E";
     return"Kamchatka";
   },
-  AUSTRALIA:(lon,lat)=>lon<134?"W. Australia":"E. Australia",
+  AUSTRALIA:(lon,lat)=>lon<132?"W. Australia":"E. Australia",
 };
 
 // Label lon/lat positions
 const LPOS = {
-  "Alaska":[-153,64],"Western Canada":[-120,58],"Eastern Canada":[-75,58],
-  "Quebec":[-72,48],"Pacific NW":[-118,44],"Great Plains":[-100,42],
-  "Eastern USA":[-80,40],"Southern USA":[-88,32],"Mexico":[-102,24],
-  "Central America":[-85,12],"Venezuela":[-68,6],"Brazil North":[-50,-5],
-  "Brazil South":[-50,-22],"Peru":[-68,-15],"Argentina":[-65,-35],
-  "Iceland":[-18,65],"Britain":[-3,54],"Scandinavia":[15,63],
-  "W. Europe":[5,47],"C. Europe":[13,50],"S. Europe":[15,41],
-  "E. Europe":[22,52],"Ukraine":[32,48],"N. Africa":[15,25],
-  "W. Africa":[-5,10],"C. Africa":[22,2],"E. Africa":[38,2],
-  "S. Africa":[25,-28],"Madagascar":[47,-20],"Turkey":[35,37],
-  "Arabia":[45,22],"Iran":[50,32],"C. Asia":[63,45],
-  "Afghanistan":[66,32],"India":[78,22],"Sri Lanka":[80,9],
-  "Indochina":[105,15],"SE Asia":[95,20],"Indonesia":[112,0],
-  "Philippines":[122,13],"China S":[110,28],"China N":[105,42],
-  "Korea":[127,40],"Japan":[136,36],"Taiwan":[121,24],
-  "Mongolia":[105,48],"W. Russia":[40,58],"Siberia W":[65,58],
-  "Siberia C":[90,60],"Siberia E":[120,62],"Kamchatka":[160,58],
-  "W. Australia":[122,-26],"E. Australia":[143,-28],"New Zealand":[172,-40],
+  "Alaska":[-153,63],"Western Canada":[-118,56],"Eastern Canada":[-78,54],
+  "Quebec":[-70,50],"Pacific NW":[-120,44],"Great Plains":[-100,42],
+  "Eastern USA":[-78,38],"Southern USA":[-88,32],"Mexico":[-102,24],
+  "Central America":[-85,12],"Venezuela":[-66,6],"Brazil North":[-50,-5],
+  "Brazil South":[-50,-22],"Peru":[-74,-12],"Argentina":[-65,-38],
+  "Iceland":[-18,65],"Britain":[-2,54],"Scandinavia":[15,63],
+  "W. Europe":[2,46],"C. Europe":[14,50],"S. Europe":[17,41],
+  "E. Europe":[24,52],"Ukraine":[34,48],"N. Africa":[17,24],
+  "W. Africa":[-5,10],"C. Africa":[24,2],"E. Africa":[38,2],
+  "S. Africa":[25,-30],"Madagascar":[47,-20],"Turkey":[33,39],
+  "Arabia":[45,23],"Iran":[54,32],"C. Asia":[62,43],
+  "Afghanistan":[66,34],"India":[78,22],"Sri Lanka":[80,8],
+  "SE Asia":[96,20],"Indochina":[103,15],"Indonesia":[115,0],
+  "Philippines":[122,12],"China S":[112,26],"China N":[105,40],
+  "Korea":[128,37],"Japan":[137,36],"Taiwan":[121,23],
+  "Mongolia":[105,47],"W. Russia":[42,56],"Siberia W":[68,57],
+  "Siberia C":[95,60],"Siberia E":[125,60],"Kamchatka":[162,57],
+  "W. Australia":[122,-25],"E. Australia":[144,-28],"New Zealand":[172,-40],
 };
 
 const ADJACENCY = {
-  "Alaska":["Western Canada","Pacific NW","Kamchatka"],
-  "Western Canada":["Alaska","Pacific NW","Great Plains","Eastern Canada"],
-  "Eastern Canada":["Western Canada","Quebec","Eastern USA"],
-  "Quebec":["Eastern Canada","Eastern USA"],
-  "Pacific NW":["Alaska","Western Canada","Great Plains","Eastern USA"],
-  "Great Plains":["Western Canada","Pacific NW","Eastern USA","Southern USA","Mexico"],
-  "Eastern USA":["Eastern Canada","Quebec","Pacific NW","Great Plains","Southern USA"],
-  "Southern USA":["Great Plains","Eastern USA","Mexico"],
-  "Mexico":["Great Plains","Southern USA","Central America"],
-  "Central America":["Mexico","Venezuela"],
-  "Venezuela":["Central America","Brazil North","Peru"],
-  "Brazil North":["Venezuela","Brazil South","Peru"],
-  "Brazil South":["Brazil North","Peru","Argentina"],
-  "Peru":["Venezuela","Brazil North","Brazil South","Argentina"],
-  "Argentina":["Brazil South","Peru"],
-  "Iceland":["Britain","Scandinavia"],
-  "Britain":["Iceland","Scandinavia","W. Europe","C. Europe"],
-  "Scandinavia":["Iceland","Britain","C. Europe","E. Europe","W. Russia"],
-  "W. Europe":["Britain","C. Europe","S. Europe","N. Africa"],
-  "C. Europe":["Britain","Scandinavia","W. Europe","S. Europe","E. Europe"],
-  "S. Europe":["W. Europe","C. Europe","E. Europe","Turkey","N. Africa"],
-  "E. Europe":["Scandinavia","C. Europe","S. Europe","Ukraine"],
-  "Ukraine":["E. Europe","W. Russia","Turkey","C. Asia","Iran"],
-  "N. Africa":["W. Europe","S. Europe","W. Africa","C. Africa","E. Africa","Arabia"],
-  "W. Africa":["N. Africa","C. Africa"],
-  "C. Africa":["N. Africa","W. Africa","E. Africa","S. Africa"],
-  "E. Africa":["N. Africa","C. Africa","S. Africa","Madagascar","Arabia"],
-  "S. Africa":["C. Africa","E. Africa","Madagascar"],
-  "Madagascar":["E. Africa","S. Africa"],
-  "Turkey":["S. Europe","Ukraine","Arabia","Iran","N. Africa"],
-  "Arabia":["Turkey","Iran","N. Africa","E. Africa"],
-  "Iran":["Turkey","Arabia","Ukraine","C. Asia","Afghanistan"],
-  "C. Asia":["Ukraine","Iran","Afghanistan","China N","Mongolia","Siberia W"],
-  "Afghanistan":["Iran","C. Asia","India","China N"],
-  "India":["Afghanistan","China S","Sri Lanka","SE Asia","Indochina"],
-  "Sri Lanka":["India"],
-  "Indochina":["India","SE Asia","Indonesia","China S","Korea"],
-  "SE Asia":["India","Indochina","Indonesia","China S"],
-  "Indonesia":["SE Asia","Indochina","Philippines","W. Australia"],
-  "Philippines":["Indonesia","Taiwan","Japan"],
-  "China N":["Afghanistan","C. Asia","Mongolia","Korea","China S"],
-  "China S":["India","China N","Korea","SE Asia","Indochina","Taiwan"],
-  "Korea":["China N","China S","Indochina","Japan","Siberia E"],
-  "Japan":["Korea","Philippines","Taiwan","Siberia E"],
-  "Mongolia":["C. Asia","China N","Siberia C","Siberia E"],
-  "Taiwan":["China S","Philippines","Japan"],
-  "W. Russia":["Scandinavia","Ukraine","Siberia W"],
-  "Siberia W":["W. Russia","C. Asia","Siberia C"],
-  "Siberia C":["Siberia W","Mongolia","Siberia E"],
-  "Siberia E":["Siberia C","Mongolia","Korea","Japan","Kamchatka"],
-  "Kamchatka":["Alaska","Siberia E"],
-  "W. Australia":["Indonesia","E. Australia"],
-  "E. Australia":["W. Australia","New Zealand"],
-  "New Zealand":["E. Australia"],
+  // North America
+  "Alaska":          ["Western Canada","Pacific NW","Kamchatka"],
+  "Western Canada":  ["Alaska","Pacific NW","Great Plains","Eastern Canada"],
+  "Eastern Canada":  ["Western Canada","Quebec","Eastern USA"],
+  "Quebec":          ["Eastern Canada","Eastern USA"],
+  "Pacific NW":      ["Alaska","Western Canada","Great Plains","Eastern USA"],
+  "Great Plains":    ["Western Canada","Pacific NW","Eastern USA","Southern USA","Mexico"],
+  "Eastern USA":     ["Eastern Canada","Quebec","Pacific NW","Great Plains","Southern USA"],
+  "Southern USA":    ["Great Plains","Eastern USA","Mexico"],
+  "Mexico":          ["Great Plains","Southern USA","Central America"],
+  "Central America": ["Mexico","Venezuela"],
+  // South America
+  "Venezuela":       ["Central America","Brazil North","Peru"],
+  "Brazil North":    ["Venezuela","Brazil South","Peru"],
+  "Brazil South":    ["Brazil North","Peru","Argentina"],
+  "Peru":            ["Venezuela","Brazil North","Brazil South","Argentina"],
+  "Argentina":       ["Brazil South","Peru"],
+  // Europe
+  "Iceland":         ["Britain","Scandinavia"],
+  "Britain":         ["Iceland","Scandinavia","W. Europe","C. Europe"],
+  "Scandinavia":     ["Iceland","Britain","C. Europe","E. Europe","W. Russia"],
+  "W. Europe":       ["Britain","C. Europe","S. Europe","N. Africa"],
+  "C. Europe":       ["Britain","Scandinavia","W. Europe","S. Europe","E. Europe"],
+  "S. Europe":       ["W. Europe","C. Europe","E. Europe","Turkey","N. Africa"],
+  "E. Europe":       ["Scandinavia","C. Europe","S. Europe","Ukraine"],
+  "Ukraine":         ["E. Europe","W. Russia","Turkey","C. Asia","Iran"],
+  // Africa
+  "N. Africa":       ["W. Europe","S. Europe","W. Africa","C. Africa","E. Africa","Arabia"],
+  "W. Africa":       ["N. Africa","C. Africa"],
+  "C. Africa":       ["N. Africa","W. Africa","E. Africa","S. Africa"],
+  "E. Africa":       ["N. Africa","C. Africa","S. Africa","Madagascar","Arabia"],
+  "S. Africa":       ["C. Africa","E. Africa","Madagascar"],
+  "Madagascar":      ["E. Africa","S. Africa"],
+  // Middle East & Central Asia
+  "Turkey":          ["S. Europe","Ukraine","Arabia","Iran"],
+  "Arabia":          ["Turkey","Iran","N. Africa","E. Africa"],
+  "Iran":            ["Turkey","Arabia","Ukraine","C. Asia","Afghanistan"],
+  "C. Asia":         ["Ukraine","Iran","Afghanistan","China N","Mongolia","Siberia W"],
+  "Afghanistan":     ["Iran","C. Asia","India","China N"],
+  // South & SE Asia
+  "India":           ["Afghanistan","China S","Sri Lanka","SE Asia","Indochina"],
+  "Sri Lanka":       ["India"],
+  "SE Asia":         ["India","Indochina","Indonesia","China S"],
+  "Indochina":       ["India","SE Asia","Indonesia","China S"],
+  "Indonesia":       ["SE Asia","Indochina","Philippines","W. Australia"],
+  "Philippines":     ["Indonesia","Taiwan","Japan"],
+  // East Asia
+  "China N":         ["Afghanistan","C. Asia","Mongolia","Korea","China S"],
+  "China S":         ["India","China N","Korea","SE Asia","Indochina","Taiwan"],
+  "Korea":           ["China N","China S","Japan","Siberia E"],
+  "Japan":           ["Korea","Philippines","Taiwan","Siberia E"],
+  "Mongolia":        ["C. Asia","China N","Siberia C","Siberia E"],
+  "Taiwan":          ["China S","Philippines","Japan"],
+  // Russia
+  "W. Russia":       ["Scandinavia","Ukraine","Siberia W"],
+  "Siberia W":       ["W. Russia","C. Asia","Siberia C"],
+  "Siberia C":       ["Siberia W","Mongolia","Siberia E"],
+  "Siberia E":       ["Siberia C","Mongolia","Korea","Japan","Kamchatka"],
+  "Kamchatka":       ["Alaska","Siberia E"],
+  // Oceania
+  "W. Australia":    ["Indonesia","E. Australia"],
+  "E. Australia":    ["W. Australia","New Zealand"],
+  "New Zealand":     ["E. Australia"],
 };
 
 const CONT_COLORS = {
@@ -391,56 +387,95 @@ function buildMap(world){
   proj=d3.geoNaturalEarth1().scale(W/6.3).translate([W/2,H/2]);
   pathFn=d3.geoPath().projection(proj);
 
-  svg=d3.select('#map-wrap').append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('preserveAspectRatio','xMidYMid meet');
+  svg=d3.select('#map-wrap').append('svg')
+    .attr('viewBox',`0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio','xMidYMid meet');
   svg.append('path').datum({type:'Sphere'}).attr('class','sphere').attr('d',pathFn);
   svg.append('path').datum(d3.geoGraticule().step([20,20])()).attr('class','grid').attr('d',pathFn);
 
-  // build territory features from topojson
-  const countries=topojson.feature(world,world.objects.countries);
-  const groups={};
+  // ── Group topojson geometry objects by territory ──────────────────
+  // Use topojson.merge() for direct-mapped territories so internal country
+  // borders are DISSOLVED — giving clean territory outlines.
+  // For split countries (USA, Canada, etc.) we split by polygon centroid first.
 
-  for(const f of countries.features){
-    const id=parseInt(f.id);
-    const raw=C2T[id];
-    if(!raw)continue;
-    const sfn=SPLIT[raw];
+  const allGeoms = world.objects.countries.geometries;
+  const topoGroups = {};   // territory -> array of raw topo geom objects (for merge)
+  const geoGroups  = {};   // territory -> array of GeoJSON polygon rings (split countries)
+
+  for(const geom of allGeoms){
+    const id = parseInt(geom.id);
+    const raw = C2T[id];
+    if(!raw) continue;
+
+    const sfn = SPLIT[raw];
     if(sfn){
-      const polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
+      // Split country: convert to GeoJSON, assign each polygon by centroid
+      const f = topojson.feature(world, geom);
+      const polys = f.geometry.type==='Polygon'
+        ? [f.geometry.coordinates]
+        : f.geometry.coordinates;
       for(const rings of polys){
-        const ring=rings[0];
+        const ring = rings[0];
         let lx=0,ly=0;
         for(const [a,b] of ring){lx+=a;ly+=b;}
-        const lon=lx/ring.length,lat=ly/ring.length;
-        const name=sfn(lon,lat);
-        if(!groups[name])groups[name]={type:'Feature',geometry:{type:'MultiPolygon',coordinates:[]},properties:{}};
-        groups[name].geometry.coordinates.push(rings);
+        const lon=lx/ring.length, lat=ly/ring.length;
+        const name = sfn(lon,lat);
+        if(!geoGroups[name]) geoGroups[name]=[];
+        geoGroups[name].push(rings);
       }
     } else {
-      if(!groups[raw])groups[raw]={type:'Feature',geometry:{type:'MultiPolygon',coordinates:[]},properties:{}};
-      const polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
-      groups[raw].geometry.coordinates.push(...polys);
+      // Direct-mapped country: keep as topo geometry for merge
+      if(!topoGroups[raw]) topoGroups[raw]=[];
+      topoGroups[raw].push(geom);
     }
   }
 
-  // layers
-  const ltint=svg.append('g');
-  const lfill=svg.append('g').attr('id','lfill');
-  const lborder=svg.append('g').attr('id','lborder');
-  const lconn=svg.append('g');
-  const llbl=svg.append('g').attr('id','llbl');
-  const larmy=svg.append('g').attr('id','larmy');
-  const lhl=svg.append('g').attr('id','lhl');
+  // ── Build final GeoJSON features per territory ────────────────────
+  const groups={};
+
+  // Direct-mapped: merge with topojson.merge to dissolve internal borders
+  for(const [name,geoms] of Object.entries(topoGroups)){
+    try{
+      // topojson.merge returns a GeoJSON MultiPolygon with shared borders removed
+      const merged = topojson.merge(world, geoms);
+      groups[name] = {type:'Feature', geometry:merged, properties:{}};
+    } catch(e){
+      // fallback if merge fails
+      const polys=[];
+      for(const g of geoms){
+        const f=topojson.feature(world,g);
+        const ps=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
+        polys.push(...ps);
+      }
+      groups[name]={type:'Feature',geometry:{type:'MultiPolygon',coordinates:polys},properties:{}};
+    }
+  }
+
+  // Split countries: build as MultiPolygon from collected rings
+  for(const [name,rings] of Object.entries(geoGroups)){
+    groups[name]={type:'Feature',geometry:{type:'MultiPolygon',coordinates:rings},properties:{}};
+  }
+
+  // ── Draw layers ───────────────────────────────────────────────────
+  const ltint   = svg.append('g');
+  const lfill   = svg.append('g').attr('id','lfill');
+  const lborder = svg.append('g').attr('id','lborder');
+  const lconn   = svg.append('g');
+  const llbl    = svg.append('g').attr('id','llbl');
+  const larmy   = svg.append('g').attr('id','larmy');
+  const lhl     = svg.append('g').attr('id','lhl');
 
   for(const [name,f] of Object.entries(groups)){
     feat[name]=f;
     const lp=LPOS[name];
-    ctr[name]=lp?proj(lp):(()=>{try{return pathFn.centroid(f)}catch{return[0,0]}})();
+    ctr[name]=lp ? proj(lp) : (()=>{try{return pathFn.centroid(f)}catch{return[0,0]}})();
 
     // continent tint
     ltint.append('path').datum(f).attr('d',pathFn)
-      .attr('fill',hex(CONT_COLORS[TERR_CONT[name]]||'#666',0.14)).attr('stroke','none');
+      .attr('fill',hex(CONT_COLORS[TERR_CONT[name]]||'#666',0.18))
+      .attr('stroke','none');
 
-    // fill (updated by render)
+    // territory fill (colour updated by render)
     lfill.append('path').datum(f).attr('d',pathFn)
       .attr('class','terr').attr('data-t',name)
       .attr('fill','rgba(30,30,50,0.3)').attr('stroke','none')
@@ -449,33 +484,39 @@ function buildMap(world){
       .on('mousemove',e=>moveTip(e))
       .on('mouseleave',hideTip);
 
-    // border
+    // territory border — clean outline, no internal country lines
     lborder.append('path').datum(f).attr('d',pathFn)
       .attr('class','terr-border').attr('data-tb',name)
-      .attr('stroke','rgba(0,0,0,0.55)').attr('stroke-width',0.8);
+      .attr('fill','none')
+      .attr('stroke','rgba(0,0,0,0.7)')
+      .attr('stroke-width',0.9)
+      .attr('stroke-linejoin','round');
   }
 
-  // connection lines
+  // ── Connection lines between adjacent territories ─────────────────
   const drawn=new Set();
   for(const [t,nbs] of Object.entries(ADJACENCY)){
     for(const n of nbs){
       const k=[t,n].sort().join('|');
-      if(drawn.has(k)||!ctr[t]||!ctr[n])continue;
+      if(drawn.has(k)||!ctr[t]||!ctr[n]) continue;
       drawn.add(k);
       const [x1,y1]=ctr[t],[x2,y2]=ctr[n];
-      if(Math.abs(x2-x1)>W*0.55)continue; // skip wrap-arounds
-      lconn.append('line').attr('class','conn').attr('x1',x1).attr('y1',y1).attr('x2',x2).attr('y2',y2);
+      // skip wrap-around lines (they cross the whole map)
+      if(Math.abs(x2-x1)>W*0.52) continue;
+      lconn.append('line').attr('class','conn')
+        .attr('x1',x1).attr('y1',y1).attr('x2',x2).attr('y2',y2);
     }
   }
-  // Alaska-Kamchatka arc
+  // Alaska ↔ Kamchatka: draw as arc over the top
   if(ctr['Alaska']&&ctr['Kamchatka']){
     const [ax,ay]=ctr['Alaska'],[kx,ky]=ctr['Kamchatka'];
     lconn.append('path').attr('class','conn').attr('stroke-dasharray','4,3')
-      .attr('d',`M${ax},${ay} C${ax},${ay-55} ${kx},${ky-55} ${kx},${ky}`);
+      .attr('d',`M${ax},${ay} C${ax},${ay-50} ${kx},${ky-50} ${kx},${ky}`);
   }
 
   renderMap();
 }
+
 
 // ── render ───────────────────────────────────────────────────────────
 function render(){
@@ -532,9 +573,11 @@ function renderMap(){
     const isSel=name===selTerr||name===atkFrom;
     const isAtk=atkFrom&&ADJACENCY[atkFrom]?.includes(name)
       &&S.board[name]?.owner!==human?.id&&myTurn&&S.phase==='attack';
+    // Base border: slightly lighter than fill for continent-coloured edge visibility
+    const cc = CONT_COLORS[TERR_CONT[name]]||'#888';
     d3.select(this)
-      .attr('stroke',isSel?'#FFD700':isAtk?'#FF4444':'rgba(0,0,0,0.55)')
-      .attr('stroke-width',isSel?2.5:isAtk?2:0.8);
+      .attr('stroke', isSel?'#FFD700' : isAtk?'#FF4444' : hex(cc,0.55))
+      .attr('stroke-width', isSel?2.5 : isAtk?2 : 1.0);
   });
 
   // labels + badges

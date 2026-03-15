@@ -77,6 +77,7 @@ TERRITORIES = {
 }
 
 ADJACENCY = {
+    # North America
     "Alaska":          ["Western Canada", "Pacific NW", "Kamchatka"],
     "Western Canada":  ["Alaska", "Pacific NW", "Great Plains", "Eastern Canada"],
     "Eastern Canada":  ["Western Canada", "Quebec", "Eastern USA"],
@@ -87,13 +88,13 @@ ADJACENCY = {
     "Southern USA":    ["Great Plains", "Eastern USA", "Mexico"],
     "Mexico":          ["Great Plains", "Southern USA", "Central America"],
     "Central America": ["Mexico", "Venezuela"],
-
+    # South America
     "Venezuela":       ["Central America", "Brazil North", "Peru"],
     "Brazil North":    ["Venezuela", "Brazil South", "Peru"],
     "Brazil South":    ["Brazil North", "Peru", "Argentina"],
     "Peru":            ["Venezuela", "Brazil North", "Brazil South", "Argentina"],
     "Argentina":       ["Brazil South", "Peru"],
-
+    # Europe
     "Iceland":         ["Britain", "Scandinavia"],
     "Britain":         ["Iceland", "Scandinavia", "W. Europe", "C. Europe"],
     "Scandinavia":     ["Iceland", "Britain", "C. Europe", "E. Europe", "W. Russia"],
@@ -102,40 +103,40 @@ ADJACENCY = {
     "S. Europe":       ["W. Europe", "C. Europe", "E. Europe", "Turkey", "N. Africa"],
     "E. Europe":       ["Scandinavia", "C. Europe", "S. Europe", "Ukraine"],
     "Ukraine":         ["E. Europe", "W. Russia", "Turkey", "C. Asia", "Iran"],
-
+    # Africa
     "N. Africa":       ["W. Europe", "S. Europe", "W. Africa", "C. Africa", "E. Africa", "Arabia"],
     "W. Africa":       ["N. Africa", "C. Africa"],
     "C. Africa":       ["N. Africa", "W. Africa", "E. Africa", "S. Africa"],
     "E. Africa":       ["N. Africa", "C. Africa", "S. Africa", "Madagascar", "Arabia"],
     "S. Africa":       ["C. Africa", "E. Africa", "Madagascar"],
     "Madagascar":      ["E. Africa", "S. Africa"],
-
-    "Turkey":          ["S. Europe", "Ukraine", "Arabia", "Iran", "N. Africa"],
+    # Middle East & Central Asia
+    "Turkey":          ["S. Europe", "Ukraine", "Arabia", "Iran"],
     "Arabia":          ["Turkey", "Iran", "N. Africa", "E. Africa"],
     "Iran":            ["Turkey", "Arabia", "Ukraine", "C. Asia", "Afghanistan"],
     "C. Asia":         ["Ukraine", "Iran", "Afghanistan", "China N", "Mongolia", "Siberia W"],
     "Afghanistan":     ["Iran", "C. Asia", "India", "China N"],
-
+    # South & SE Asia
     "India":           ["Afghanistan", "China S", "Sri Lanka", "SE Asia", "Indochina"],
     "Sri Lanka":       ["India"],
-    "Indochina":       ["India", "SE Asia", "Indonesia", "China S", "Korea"],
     "SE Asia":         ["India", "Indochina", "Indonesia", "China S"],
+    "Indochina":       ["India", "SE Asia", "Indonesia", "China S"],
     "Indonesia":       ["SE Asia", "Indochina", "Philippines", "W. Australia"],
     "Philippines":     ["Indonesia", "Taiwan", "Japan"],
-
+    # East Asia
     "China N":         ["Afghanistan", "C. Asia", "Mongolia", "Korea", "China S"],
     "China S":         ["India", "China N", "Korea", "SE Asia", "Indochina", "Taiwan"],
-    "Korea":           ["China N", "China S", "Indochina", "Japan", "Siberia E"],
+    "Korea":           ["China N", "China S", "Japan", "Siberia E"],
     "Japan":           ["Korea", "Philippines", "Taiwan", "Siberia E"],
     "Mongolia":        ["C. Asia", "China N", "Siberia C", "Siberia E"],
     "Taiwan":          ["China S", "Philippines", "Japan"],
-
+    # Russia
     "W. Russia":       ["Scandinavia", "Ukraine", "Siberia W"],
     "Siberia W":       ["W. Russia", "C. Asia", "Siberia C"],
     "Siberia C":       ["Siberia W", "Mongolia", "Siberia E"],
     "Siberia E":       ["Siberia C", "Mongolia", "Korea", "Japan", "Kamchatka"],
     "Kamchatka":       ["Alaska", "Siberia E"],
-
+    # Oceania
     "W. Australia":    ["Indonesia", "E. Australia"],
     "E. Australia":    ["W. Australia", "New Zealand"],
     "New Zealand":     ["E. Australia"],
